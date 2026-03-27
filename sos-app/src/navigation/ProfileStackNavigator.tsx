@@ -8,6 +8,7 @@ import { NotificationsScreen } from '../screens/notifications/NotificationsScree
 import { OutfitDetailScreen } from '../screens/outfit/OutfitDetailScreen';
 import { WardrobeScreen } from '../screens/wardrobe/WardrobeScreen';
 import { StylistScreen } from '../screens/stylist/StylistScreen';
+import { SettingsScreen } from '../screens/settings/SettingsScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -18,6 +19,7 @@ export type ProfileStackParamList = {
   OutfitDetail: { outfit: any };
   Wardrobe: undefined;
   Stylist: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -27,6 +29,7 @@ export const ProfileStackNavigator: React.FC = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

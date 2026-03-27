@@ -34,6 +34,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
   const settings = [
     { icon: 'person-outline', label: 'Edit Profile', action: () => navigation.navigate('EditProfile') },
+    { icon: 'settings-outline', label: 'Settings', action: () => navigation.navigate('Settings') },
     { icon: 'shirt-outline', label: 'My Wardrobe', action: () => navigation.navigate('Wardrobe') },
     { icon: 'cut-outline', label: 'Book Stylist', action: () => navigation.navigate('Stylist') },
     { icon: 'notifications-outline', label: 'Notifications', action: () => navigation.navigate('Notifications') },

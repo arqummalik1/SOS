@@ -41,7 +41,14 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigati
 
   const handleNext = () => {
     if (canProceed) {
-      navigation.navigate('FullBodyPhoto');
+      const profileData = {
+        name,
+        height,
+        weight,
+        dob: { day, month, year },
+        profileImage,
+      };
+      navigation.navigate('StylePreferences', { profileData });
     }
   };
 

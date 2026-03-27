@@ -81,6 +81,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           color={isSaved(outfit.id) ? '#FF375F' : '#FFFFFF'}
         />
       </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.tryOnButton}
+        onPress={() => navigation.navigate('VirtualTryOn', { outfit })}
+      >
+        <Ionicons name="camera" size={14} color="#FFFFFF" />
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -287,6 +293,17 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tryOnButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(139, 92, 246, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },

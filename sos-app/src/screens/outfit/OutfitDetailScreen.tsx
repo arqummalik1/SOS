@@ -101,15 +101,28 @@ export const OutfitDetailScreen: React.FC<OutfitDetailScreenProps> = ({
         </ScrollView>
 
         <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.saveButton}>
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={() => {}}
+          >
             <GlassView intensity="thin" borderRadius={20} style={styles.saveButtonInner}>
               <Ionicons name="heart-outline" size={24} color="#FFFFFF" />
             </GlassView>
           </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.tryOnButton}
+            onPress={() => navigation.navigate('VirtualTryOn', { outfit })}
+          >
+            <GlassView intensity="thin" borderRadius={20} style={styles.tryOnButtonInner}>
+              <Ionicons name="camera" size={22} color="#FFFFFF" />
+            </GlassView>
+          </TouchableOpacity>
+
           <View style={styles.bookButtonContainer}>
             <GlassButton
               title="Book Stylist"
-              onPress={() => {}}
+              onPress={() => navigation.navigate('Stylist')}
               variant="solid"
             />
           </View>
@@ -233,6 +246,14 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tryOnButton: {},
+  tryOnButtonInner: {
+    width: 56,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.5)',
   },
   bookButtonContainer: {
     flex: 1,
