@@ -1,14 +1,15 @@
 import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 // KyivType SansSerif Font Family Configuration
-// Note: These fonts need to be loaded from assets/fonts/ directory
+// Using system fonts as fallback if custom fonts aren't loaded
 export const fontNames = {
-  light: 'KyivTypeSansSerif-Light',
-  regular: 'KyivTypeSansSerif-Regular',
-  medium: 'KyivTypeSansSerif-Medium',
-  bold: 'KyivTypeSansSerif-Bold',
-  heavy: 'KyivTypeSansSerif-Heavy',
+  light: Platform.select({ ios: 'SFProText-Light', android: 'sans-serif-light', default: 'System' }),
+  regular: Platform.select({ ios: 'SFProText-Regular', android: 'sans-serif', default: 'System' }),
+  medium: Platform.select({ ios: 'SFProText-Medium', android: 'sans-serif-medium', default: 'System' }),
+  bold: Platform.select({ ios: 'SFProText-Bold', android: 'sans-serif-bold', default: 'System' }),
+  heavy: Platform.select({ ios: 'SFProText-Heavy', android: 'sans-serif-black', default: 'System' }),
 } as const;
 
 export type FontWeight = 'light' | 'regular' | 'medium' | 'bold' | 'heavy';
@@ -21,24 +22,9 @@ export const fontWeights: Record<FontWeight, string> = {
   heavy: '800',
 };
 
-// Font loading hook
+// Font loading hook - using system fonts for now
 export const useSOSFonts = () => {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-  
-  const [loaded] = useFonts({
-    'KyivTypeSansSerif-Light': require('../../assets/fonts/KyivTypeSansSerif-Light.otf'),
-    'KyivTypeSansSerif-Regular': require('../../assets/fonts/KyivTypeSansSerif-Regular.otf'),
-    'KyivTypeSansSerif-Medium': require('../../assets/fonts/KyivTypeSansSerif-Medium.otf'),
-    'KyivTypeSansSerif-Bold': require('../../assets/fonts/KyivTypeSansSerif-Bold.otf'),
-    'KyivTypeSansSerif-Heavy': require('../../assets/fonts/KyivTypeSansSerif-Heavy.otf'),
-  });
-
-  useEffect(() => {
-    if (loaded) {
-      setFontsLoaded(true);
-    }
-  }, [loaded]);
-
+  const [fontsLoaded, setFontsLoaded] = useState(true);
   return fontsLoaded;
 };
 
@@ -47,7 +33,7 @@ export const getFontFamily = (weight: FontWeight = 'regular'): string => {
   return fontNames[weight];
 };
 
-// Typography scale using KyivType SansSerif
+// Typography scale using system fonts
 export const kyivTypography = {
   // Display styles
   displayLarge: {
