@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/store/AuthContext';
 import { UserProvider } from './src/store/UserContext';
 import { OutfitProvider } from './src/store/OutfitContext';
+import { ThemeProvider } from './src/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
@@ -48,16 +49,18 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <AuthProvider>
-          <UserProvider>
-            <OutfitProvider>
-              <View style={styles.container}>
-                <StatusBar style="light" />
-                <RootNavigator />
-              </View>
-            </OutfitProvider>
-          </UserProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <UserProvider>
+              <OutfitProvider>
+                <View style={styles.container}>
+                  <StatusBar style="light" />
+                  <RootNavigator />
+                </View>
+              </OutfitProvider>
+            </UserProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
