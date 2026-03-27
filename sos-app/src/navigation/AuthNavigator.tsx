@@ -1,0 +1,37 @@
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SplashScreen } from '../screens/auth/SplashScreen';
+import { SignInScreen } from '../screens/auth/SignInScreen';
+import { OTPScreen } from '../screens/auth/OTPScreen';
+import { ProfilePictureScreen } from '../screens/onboarding/ProfilePictureScreen';
+import { ProfileSetupScreen } from '../screens/onboarding/ProfileSetupScreen';
+import { FullBodyPhotoScreen } from '../screens/onboarding/FullBodyPhotoScreen';
+
+export type AuthStackParamList = {
+  Splash: undefined;
+  SignIn: undefined;
+  OTP: undefined;
+  ProfilePicture: undefined;
+  ProfileSetup: undefined;
+  FullBodyPhoto: undefined;
+};
+
+const Stack = createNativeStackNavigator<AuthStackParamList>();
+
+export const AuthNavigator: React.FC = () => {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="OTP" component={OTPScreen} />
+      <Stack.Screen name="ProfilePicture" component={ProfilePictureScreen} />
+      <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+      <Stack.Screen name="FullBodyPhoto" component={FullBodyPhotoScreen} />
+    </Stack.Navigator>
+  );
+};
