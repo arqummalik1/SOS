@@ -15,6 +15,7 @@ import { GlassView } from '../../components/ui/GlassView';
 import { GlassButton } from '../../components/ui/GlassButton';
 import { useUser } from '../../store/UserContext';
 import { spacing } from '../../theme/spacing';
+import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 
 interface EditProfileScreenProps {
@@ -140,13 +141,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   headerTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: typography.headline.fontWeight,
+    ...typography.headline,
     color: '#000000',
   },
   saveText: {
-    fontSize: typography.body.fontSize,
-    fontWeight: '600',
+    ...typography.headline,
     color: '#BF5AF2',
   },
   scrollView: {
@@ -188,9 +187,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changePhotoText: {
-    fontSize: typography.subheadline.fontSize,
+    ...typography.subheadline,
     color: '#BF5AF2',
-    fontWeight: '500',
   },
   formSection: {
     marginBottom: spacing.xxl,
@@ -199,8 +197,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: typography.subheadline.fontWeight,
+    ...typography.subheadline,
     color: '#666666',
     marginBottom: spacing.sm,
   },
@@ -214,7 +211,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    fontSize: typography.body.fontSize,
+    ...typography.body,
     color: '#000000',
     paddingVertical: spacing.md,
   },
@@ -222,8 +219,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: typography.subheadline.fontWeight,
+    ...typography.subheadline,
     color: '#666666',
     marginBottom: spacing.md,
   },
@@ -237,7 +233,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   rowText: {
-    fontSize: typography.body.fontSize,
+    ...typography.body,
     color: '#000000',
   },
 });

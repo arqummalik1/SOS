@@ -6,6 +6,7 @@ type UserContextType = {
   user: User | null;
   updateProfile: (data: Partial<User>) => Promise<void>;
   saveProfileSetup: (data: ProfileSetupData) => Promise<void>;
+  clearUserData: () => void;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -22,6 +23,7 @@ const defaultUser: User = {
   stylePreferences: [],
   colorPreferences: [],
   budgetRange: '',
+  wardrobeItems: [],
 };
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -69,8 +71,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AsyncStorage.setItem('userData', JSON.stringify(newUser));
   };
 
+  const clearUserData = () => {
+    setUser(null);
+  };
+
   return (
-    <UserContext.Provider value={{ user, updateProfile, saveProfileSetup }}>
+    <UserContext.Provider value={{ user, updateProfile, saveProfileSetup, clearUserData }}>
       {children}
     </UserContext.Provider>
   );

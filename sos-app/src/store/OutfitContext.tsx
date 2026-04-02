@@ -13,6 +13,7 @@ type OutfitContextType = {
   isSaved: (id: string) => boolean;
   searchOutfits: (query: string) => Outfit[];
   filterByCategory: (category: string) => Outfit[];
+  clearSavedOutfits: () => void;
 };
 
 const OutfitContext = createContext<OutfitContextType | undefined>(undefined);
@@ -73,6 +74,10 @@ export const OutfitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return outfits.filter((outfit) => outfit.category === category);
   };
 
+  const clearSavedOutfits = () => {
+    setSavedOutfits([]);
+  };
+
   const featuredOutfits = outfits.filter((o) => o.isFeatured);
   const trendingOutfits = outfits.filter((o) => o.isTrending);
 
@@ -88,6 +93,7 @@ export const OutfitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isSaved,
         searchOutfits,
         filterByCategory,
+        clearSavedOutfits,
       }}
     >
       {children}

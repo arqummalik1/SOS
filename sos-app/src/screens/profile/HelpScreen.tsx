@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { spacing } from '../../theme/spacing';
+import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 
 interface HelpScreenProps {
@@ -117,8 +118,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   headerTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: typography.headline.fontWeight,
+    ...typography.headline,
     color: '#000000',
   },
   scrollView: {
@@ -131,8 +131,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   sectionTitle: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: '600',
+    ...typography.subheadline,
     color: '#666666',
     marginBottom: spacing.lg,
     textTransform: 'uppercase',
@@ -145,13 +144,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   question: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: '600',
+    ...typography.subheadline,
     color: '#000000',
     marginBottom: spacing.sm,
   },
   answer: {
-    fontSize: typography.footnote.fontSize,
+    ...typography.footnote,
     color: '#666666',
     lineHeight: 20,
   },
@@ -176,13 +174,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contactLabel: {
-    fontSize: typography.body.fontSize,
-    fontWeight: '500',
+    ...typography.body,
     color: '#000000',
     marginBottom: spacing.xs,
   },
   contactValue: {
-    fontSize: typography.caption1.fontSize,
+    ...typography.caption1,
     color: '#666666',
   },
   resourceRow: {
@@ -196,7 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   resourceText: {
-    fontSize: typography.body.fontSize,
+    ...typography.body,
     color: '#000000',
   },
 });

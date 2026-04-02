@@ -261,12 +261,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   countryCodeValue: {
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
+    ...typography.body,
     color: colors.text.primary,
   },
   dropdownArrow: {
-    fontSize: 10,
+    fontSize: typography.caption2.fontSize,
     color: colors.text.secondary,
     marginLeft: 4,
   },
@@ -289,8 +288,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: {
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
+    ...typography.body,
     color: colors.text.primary,
     letterSpacing: 2,
     padding: 0,
@@ -330,8 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(120,120,128,0.3)',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.title3,
     color: colors.text.onLight,
     textAlign: 'center',
     marginBottom: 16,
@@ -350,17 +347,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   countryFlag: {
-    fontSize: 28,
+    fontSize: typography.title1.fontSize,
   },
   countryName: {
     flex: 1,
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.onLight,
-    fontWeight: '500',
   },
   countryCodeLabel: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.onLightSecondary,
-    fontWeight: '500',
   },
 });

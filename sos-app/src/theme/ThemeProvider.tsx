@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { TextStyle, ViewStyle } from 'react-native';
-import { kyivTypography, TypographyVariant } from './fonts';
+import { appTypography, TypographyVariant } from './fonts';
 
 // Typography types from fonts.ts
 export type { TypographyVariant } from './fonts';
@@ -160,7 +160,7 @@ export const sosShadows = {
 // Complete Theme Object
 export interface SOSTheme {
   colors: typeof sosColors;
-  typography: typeof kyivTypography;
+  typography: typeof appTypography;
   spacing: typeof sosSpacing;
   borderRadius: typeof sosBorderRadius;
   shadows: typeof sosShadows;
@@ -168,7 +168,7 @@ export interface SOSTheme {
 
 const defaultTheme: SOSTheme = {
   colors: sosColors,
-  typography: kyivTypography,
+  typography: appTypography,
   spacing: sosSpacing,
   borderRadius: sosBorderRadius,
   shadows: sosShadows,
@@ -195,7 +195,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
 // Helper function to get text style by variant
 export const getTextStyle = (variant: TypographyVariant): TextStyle => {
-  return kyivTypography[variant];
+  return appTypography[variant];
 };
 
 // Helper function to combine multiple spacing values

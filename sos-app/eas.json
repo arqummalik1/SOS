@@ -9,16 +9,10 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "env": {
-        "ANDROID_NEW_ARCH_ENABLED": "false"
-      }
+      "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true,
-      "env": {
-        "ANDROID_NEW_ARCH_ENABLED": "false"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {

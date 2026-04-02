@@ -8,9 +8,14 @@ import { MainTabNavigator } from './MainTabNavigator';
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
+  AddItemCamera: undefined;
+  AddItemGallery: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+import { AddItemCameraScreen } from '../screens/wardrobe/AddItemCameraScreen';
+import { AddItemGalleryScreen } from '../screens/wardrobe/AddItemGalleryScreen';
 
 export const RootNavigator: React.FC = () => {
   const { state } = useAuth();
@@ -21,7 +26,11 @@ export const RootNavigator: React.FC = () => {
         {!state.isOnboarded ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : (
-          <Stack.Screen name="Main" component={MainTabNavigator} />
+          <>
+            <Stack.Screen name="Main" component={MainTabNavigator} />
+            <Stack.Screen name="AddItemCamera" component={AddItemCameraScreen} />
+            <Stack.Screen name="AddItemGallery" component={AddItemGalleryScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

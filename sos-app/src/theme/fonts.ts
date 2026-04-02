@@ -1,16 +1,21 @@
-import { useFonts } from 'expo-font';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import * as Font from 'expo-font';
 
-// KyivType SansSerif Font Family Configuration
-// Using system fonts as fallback if custom fonts aren't loaded
-export const fontNames = {
-  light: Platform.select({ ios: 'SFProText-Light', android: 'sans-serif-light', default: 'System' }),
-  regular: Platform.select({ ios: 'SFProText-Regular', android: 'sans-serif', default: 'System' }),
-  medium: Platform.select({ ios: 'SFProText-Medium', android: 'sans-serif-medium', default: 'System' }),
-  bold: Platform.select({ ios: 'SFProText-Bold', android: 'sans-serif-bold', default: 'System' }),
-  heavy: Platform.select({ ios: 'SFProText-Heavy', android: 'sans-serif-black', default: 'System' }),
-} as const;
+/**
+ * Albert Sans Font Family Configuration
+ * 
+ * Global theme configuration using Albert Sans custom fonts.
+ * This ensures consistent typography across iOS and Android.
+ */
+
+// Albert Sans font family names (matching the .ttf file names)
+export const fontNames: Record<FontWeight, string> = {
+  light: 'AlbertSans-Light',
+  regular: 'AlbertSans-Regular',
+  medium: 'AlbertSans-Medium',
+  bold: 'AlbertSans-Bold',
+  heavy: 'AlbertSans-Black',
+};
 
 export type FontWeight = 'light' | 'regular' | 'medium' | 'bold' | 'heavy';
 
@@ -22,10 +27,37 @@ export const fontWeights: Record<FontWeight, string> = {
   heavy: '800',
 };
 
-// Font loading hook - using system fonts for now
+/**
+ * useSOSFonts - Hook to load the Albert Sans fonts.
+ * This hook is used in App.tsx to ensure fonts are ready before rendering.
+ */
 export const useSOSFonts = () => {
-  const [fontsLoaded, setFontsLoaded] = useState(true);
-  return fontsLoaded;
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [fontError, setFontError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          'AlbertSans-Regular': require('../../assets/fonts/Albert Sans/AlbertSans-Regular.ttf'),
+          'AlbertSans-Light': require('../../assets/fonts/Albert Sans/AlbertSans-Light.ttf'),
+          'AlbertSans-Medium': require('../../assets/fonts/Albert Sans/AlbertSans-Medium.ttf'),
+          'AlbertSans-Bold': require('../../assets/fonts/Albert Sans/AlbertSans-Bold.ttf'),
+          'AlbertSans-Black': require('../../assets/fonts/Albert Sans/AlbertSans-Black.ttf'),
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.error('Error loading fonts:', error);
+        setFontError(error as Error);
+        // Still set loaded to true to prevent app from hanging
+        setFontsLoaded(true);
+      }
+    }
+
+    loadFonts();
+  }, []);
+
+  return { fontsLoaded, fontError };
 };
 
 // Get font family name based on weight
@@ -33,8 +65,8 @@ export const getFontFamily = (weight: FontWeight = 'regular'): string => {
   return fontNames[weight];
 };
 
-// Typography scale using system fonts
-export const kyivTypography = {
+// Typography scale using the global fontNames
+export const appTypography = {
   // Display styles
   displayLarge: {
     fontFamily: fontNames.heavy,
@@ -136,4 +168,4 @@ export const kyivTypography = {
   },
 } as const;
 
-export type TypographyVariant = keyof typeof kyivTypography;
+export type TypographyVariant = keyof typeof appTypography;

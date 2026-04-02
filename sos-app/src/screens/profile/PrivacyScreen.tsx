@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { GlassView } from '../../components/ui/GlassView';
 import { spacing } from '../../theme/spacing';
+import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 
 interface PrivacyScreenProps {
@@ -118,8 +119,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   headerTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: typography.headline.fontWeight,
+    ...typography.headline,
     color: '#000000',
   },
   scrollView: {
@@ -132,8 +132,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   sectionTitle: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: '600',
+    ...typography.subheadline,
     color: '#666666',
     marginBottom: spacing.md,
     textTransform: 'uppercase',
@@ -154,13 +153,12 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   rowLabel: {
-    fontSize: typography.body.fontSize,
-    fontWeight: '500',
+    ...typography.body,
     color: '#000000',
     marginBottom: spacing.xs,
   },
   rowDescription: {
-    fontSize: typography.caption1.fontSize,
+    ...typography.caption1,
     color: '#666666',
   },
   actionRow: {
@@ -174,11 +172,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   actionText: {
-    fontSize: typography.body.fontSize,
+    ...typography.body,
     color: '#000000',
   },
   actionTextDanger: {
-    fontSize: typography.body.fontSize,
+    ...typography.body,
     color: '#FF375F',
   },
 });

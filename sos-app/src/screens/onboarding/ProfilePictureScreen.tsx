@@ -11,6 +11,8 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { typography } from '../../theme/typography';
+import { fontNames } from '../../theme/fonts';
 
 const { width, height } = Dimensions.get('window');
 const PREVIEW_SIZE = width - 48;
@@ -140,13 +142,15 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: typography.title1.fontSize,
+    fontFamily: fontNames.bold,
     fontWeight: '600',
     color: '#000000',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: typography.subheadline.fontSize,
+    fontFamily: fontNames.regular,
     color: '#666666',
     textAlign: 'center',
     marginBottom: 24,
