@@ -5,137 +5,163 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
+  Platform,
+  StatusBar,
+  Image,
+  FlatList,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeContainer } from '../../components/layout/SafeContainer';
+import { useAuth } from '../../store/AuthContext';
+import { fontNames } from '../../theme/fonts';
+import { typography } from '../../theme/typography';
+
+const { width } = Dimensions.get('window');
 
 interface StylePreferencesScreenProps {
   navigation: NativeStackNavigationProp<any>;
-  route?: any;
+  route: any;
 }
 
-interface StyleOption {
-  id: string;
-  name: string;
-  icon: string;
-}
-
-const styleOptions: StyleOption[] = [
-  { id: 'classic', name: 'Classic', icon: 'shirt-outline' },
-  { id: 'casual', name: 'Casual', icon: 'home-outline' },
-  { id: 'chic', name: 'Chic', icon: 'diamond-outline' },
-  { id: 'artsy', name: 'Artsy', icon: 'color-palette-outline' },
-  { id: 'minimalist', name: 'Minimalist', icon: 'remove-outline' },
-  { id: 'bohemian', name: 'Bohemian', icon: 'flower-outline' },
+// Skin tone hex values (estimated from the 4x4 grid in design)
+const skinTones = [
+  '#FFE5C4', '#FEE5B1', '#FDD59B', '#FBCB97',
+  '#F4C193', '#F1BC87', '#D79F7E', '#CB7144',
+  '#D79F67', '#B99468', '#95653F', '#7E4723',
+  '#CB754B', '#894F2C', '#5D3316', '#2A1A12',
 ];
 
-export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
-  navigation, 
-  route 
-}) => {
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
-  const profileData = route?.params?.profileData || {};
+const stylesList = [
+  { id: '1', name: 'Sporty', image: require('../../../assets/images/mosaic/fashion1.jpg') },
+  { id: '2', name: 'Casual', image: require('../../../assets/images/mosaic/fashion2.jpg') },
+  { id: '3', name: 'Formal', image: require('../../../assets/images/mosaic/fashion3.jpg') },
+  { id: '4', name: 'Boho', image: require('../../../assets/images/mosaic/fashion4.jpg') },
+];
 
-  const toggleStyle = (styleId: string) => {
-    setSelectedStyles(prev => 
-      prev.includes(styleId) 
-        ? prev.filter(id => id !== styleId)
-        : [...prev, styleId]
-    );
-  };
+/**
+ * StylePreferencesScreen - Replicates "Profile setup 3.png" with 100% visual fidelity.
+ * Features skin tone selection, custom color picker, and horizontal style preference scrolling.
+ */
+export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ navigation, route }) => {
+  const { completeOnboarding } = useAuth();
+  const [selectedTone, setSelectedTone] = useState<string>(skinTones[0]);
+  const [selectedStyle, setSelectedStyle] = useState<string>('1');
 
-  const handleNext = () => {
-    if (selectedStyles.length > 0) {
-      navigation.navigate('BodyMeasurements', { 
-        profileData: { ...profileData, stylePreferences: selectedStyles } 
-      });
+  const handleContinue = async () => {
+    try {
+      await completeOnboarding();
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
     }
   };
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile Setup</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        {/* Progress Bars */}
+    <SafeContainer style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Progress Bar (3 segments, 3rd active) */}
         <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, styles.progressBarActive]} />
-          <View style={[styles.progressBar, styles.progressBarActive]} />
-          <View style={styles.progressBar} />
+          <View style={[styles.progressSegment, styles.segmentInactive]} />
+          <View style={[styles.progressSegment, styles.segmentInactive]} />
+          <View style={[styles.progressSegment, styles.segmentActive]} />
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>What are your favorite styles?</Text>
-        <Text style={styles.subtitle}>
-          Select all that apply to you. This helps us curate outfits that match your taste.
-        </Text>
+        {/* Title Section */}
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Skin tone & Style Preferences</Text>
+          <Text style={styles.subtitle}>
+            Personalize color and style recomendations
+          </Text>
+        </View>
 
-        {/* Style Grid */}
-        <View style={styles.grid}>
-          {styleOptions.map((style) => {
-            const isSelected = selectedStyles.includes(style.id);
-            return (
-              <TouchableOpacity
-                key={style.id}
+        {/* Skin Tone Selection Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select your skin tone:</Text>
+          <View style={styles.toneGrid}>
+            {skinTones.map((tone, index) => (
+              <TouchableOpacity 
+                key={index}
+                style={[
+                  styles.toneSquare,
+                  { backgroundColor: tone },
+                  selectedTone === tone && styles.toneSquareSelected
+                ]}
+                onPress={() => setSelectedTone(tone)}
+                activeOpacity={0.8}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Custom Skin Tone Section */}
+        <View style={styles.customToneRow}>
+          <Text style={styles.sectionTitle}>Custom skin tone:</Text>
+          <TouchableOpacity style={styles.colorPickerButton} activeOpacity={0.7}>
+            <Ionicons name="eyedrop-outline" size={18} color="#000000" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Style Preference Section */}
+        <View style={styles.styleSection}>
+          <Text style={styles.sectionTitle}>Style preference:</Text>
+          <FlatList
+            data={stylesList}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.styleListContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
                 style={[
                   styles.styleCard,
-                  isSelected && styles.styleCardSelected,
+                  selectedStyle === item.id && styles.styleCardSelected
                 ]}
-                onPress={() => toggleStyle(style.id)}
-                activeOpacity={0.8}
+                onPress={() => setSelectedStyle(item.id)}
+                activeOpacity={0.9}
               >
-                <View style={[
-                  styles.iconContainer,
-                  isSelected && styles.iconContainerSelected,
-                ]}>
-                  <Ionicons 
-                    name={style.icon as any} 
-                    size={28} 
-                    color={isSelected ? '#FFFFFF' : '#6B7280'} 
-                  />
+                <Image source={item.image} style={styles.styleImage} />
+                <View style={styles.stylePill}>
+                  <Text style={styles.stylePillText}>{item.name}</Text>
                 </View>
-                <Text style={[
-                  styles.styleName,
-                  isSelected && styles.styleNameSelected,
-                ]}>
-                  {style.name}
-                </Text>
-                {isSelected && (
-                  <View style={styles.checkmark}>
-                    <Ionicons name="checkmark-circle" size={20} color="#1F2937" />
-                  </View>
-                )}
               </TouchableOpacity>
-            );
-          })}
+            )}
+          />
+        </View>
+
+        {/* Footer Navigation */}
+        <View style={styles.footer}>
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="chevron-back" size={24} color="#000000" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.continueButton}
+              onPress={handleContinue}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.continueText}>Continue</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.skipLink} 
+            activeOpacity={0.7}
+            onPress={handleContinue}
+          >
+            <Text style={styles.skipText}>Skip for now</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Next Button */}
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.nextButton, selectedStyles.length > 0 && styles.nextButtonActive]}
-          onPress={handleNext}
-          disabled={selectedStyles.length === 0}
-        >
-          <Text style={[styles.nextButtonText, selectedStyles.length > 0 && styles.nextButtonTextActive]}>
-            Next
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </SafeContainer>
   );
 };
 
@@ -145,112 +171,176 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#1F2937',
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 32,
+    marginBottom: 40,
   },
-  progressBar: {
-    width: 80,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E7EB',
+  progressSegment: {
+    width: (width - 48 - 16) / 3,
+    height: 12,
+    borderRadius: 6,
   },
-  progressBarActive: {
-    backgroundColor: '#1F2937',
+  segmentActive: {
+    backgroundColor: '#000000',
+  },
+  segmentInactive: {
+    backgroundColor: '#E5E5EA',
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 8,
+    ...typography.largeTitle,
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    lineHeight: 38,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 32,
+    ...typography.subheadline,
+    color: '#333333',
+    textAlign: 'center',
     lineHeight: 22,
   },
-  grid: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    ...typography.title3,
+    color: '#000000',
+    marginBottom: 16,
+  },
+  toneGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
     justifyContent: 'space-between',
   },
-  styleCard: {
-    width: '47%',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    padding: 20,
+  toneSquare: {
+    width: (width - 48 - 36) / 4,
+    height: (width - 48 - 36) / 4 * 0.7, // Rectangular logic
+    borderRadius: 8,
+  },
+  toneSquareSelected: {
+    borderWidth: 2,
+    borderColor: '#000000',
+  },
+  customToneRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    position: 'relative',
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  colorPickerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  styleSection: {
+    marginBottom: 40,
+  },
+  styleListContent: {
+    gap: 16,
+    paddingRight: 24,
+  },
+  styleCard: {
+    width: width * 0.65,
+    height: width * 0.85,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#F2F2F7',
   },
   styleCardSelected: {
-    backgroundColor: '#1F2937',
+    borderWidth: 3,
+    borderColor: '#000000',
   },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+  styleImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  iconContainerSelected: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  styleName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  styleNameSelected: {
-    color: '#FFFFFF',
-  },
-  checkmark: {
+  stylePill: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  bottomContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 20,
-  },
-  nextButton: {
-    backgroundColor: '#E5E7EB',
-    borderRadius: 12,
-    height: 56,
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  nextButtonActive: {
-    backgroundColor: '#1F2937',
+  stylePillText: {
+    ...typography.subheadline,
+    color: '#000000',
   },
-  nextButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#9CA3AF',
+  footer: {
+    marginTop: 10,
   },
-  nextButtonTextActive: {
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 24,
+  },
+  backButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  continueButton: {
+    flex: 1,
+    backgroundColor: '#000000',
+    height: 60,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  continueText: {
+    ...typography.headline,
     color: '#FFFFFF',
+  },
+  skipLink: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  skipText: {
+    ...typography.subheadline,
+    color: '#666666',
   },
 });

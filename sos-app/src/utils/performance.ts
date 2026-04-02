@@ -1,9 +1,10 @@
 import { useCallback, useMemo, memo } from 'react';
 import { FlatList, ListRenderItem } from 'react-native';
+import React from 'react';
 
 // Memoized list item wrapper for FlatList optimization
-export const MemoizedListItem = memo(({ children }: { children: React.ReactNode }) => {
-  return <>{children}</>;
+export const MemoizedListItem = memo(function MemoizedListItem({ children }: { children: React.ReactNode }) {
+  return React.createElement(React.Fragment, null, children);
 });
 
 // Optimized FlatList configuration for large datasets

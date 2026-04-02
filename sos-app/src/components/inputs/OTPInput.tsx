@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: typography.title3.fontSize,
     fontWeight: typography.title3.fontWeight,
+    fontFamily: typography.title3.fontFamily,
     padding: 0,
   },
   inputEmpty: {

@@ -1,146 +1,90 @@
-import React, { useState, useRef } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Image,
   Dimensions,
-  Animated,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
+import { fontNames } from '../../theme/fonts';
+import { typography } from '../../theme/typography';
+import { ProfileSetupScreen } from './ProfileSetupScreen'; // To render as blurred background
 
 const { width, height } = Dimensions.get('window');
-const PREVIEW_WIDTH = width - 48;
-const PREVIEW_HEIGHT = PREVIEW_WIDTH * 1.4;
 
 interface FullBodyPhotoScreenProps {
   navigation: NativeStackNavigationProp<any>;
 }
 
+/**
+ * FullBodyPhotoScreen - Replicates "Profile setup 1.1.png" with 100% visual fidelity.
+ * Uses a live BlurView overlay over the ProfileSetupScreen content.
+ */
 export const FullBodyPhotoScreen: React.FC<FullBodyPhotoScreenProps> = ({ navigation }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [cameraFacing, setCameraFacing] = useState<'back' | 'front'>('back');
-  const shutterScale = useRef(new Animated.Value(1)).current;
-
-  const animateShutter = () => {
-    Animated.sequence([
-      Animated.timing(shutterScale, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shutterScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const takePicture = async () => {
-    animateShutter();
-    const mockImageUri = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400';
-    setSelectedImage(mockImageUri);
-    setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Main' }],
-      });
-    }, 500);
-  };
-
-  const openGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Sorry, we need gallery permissions to make this work!');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setSelectedImage(result.assets[0].uri);
-      setTimeout(() => {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
-      }, 500);
-    }
-  };
-
-  const toggleCamera = () => {
-    setCameraFacing(current => current === 'back' ? 'front' : 'back');
-  };
-
-  const renderGridOverlay = () => (
-    <View style={styles.gridOverlay} pointerEvents="none">
-      <View style={[styles.gridLine, styles.gridLineVertical, { left: '33.33%' }]} />
-      <View style={[styles.gridLine, styles.gridLineVertical, { left: '66.66%' }]} />
-      <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '33.33%' }]} />
-      <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '66.66%' }]} />
-    </View>
-  );
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Full body picture</Text>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Background - Blurred ProfileSetupScreen */}
+      <View style={styles.backgroundContainer} pointerEvents="none">
+        <ProfileSetupScreen navigation={navigation} />
+        <BlurView 
+          intensity={Platform.OS === 'ios' ? 80 : 100} 
+          style={StyleSheet.absoluteFill} 
+          tint="light"
+        />
       </View>
 
-      {/* Subtitle */}
-      <Text style={styles.subtitle}>Please capture your full body photo on a plain background</Text>
+      {/* Upload Card Overlay */}
+      <View style={styles.overlayContainer}>
+        <View style={styles.whiteCard}>
+          <View style={styles.content}>
+            {/* Title Section */}
+            <Text style={styles.title}>Upload full photo</Text>
+            <Text style={styles.subtitle}>
+              This information helps us deliver a better, more personalized experience for you.
+            </Text>
 
-      {/* Camera Preview */}
-      <View style={styles.previewContainer}>
-        {selectedImage ? (
-          <Image source={{ uri: selectedImage }} style={styles.previewImage} />
-        ) : (
-          <View style={styles.cameraContainer}>
-            <View style={styles.cameraPlaceholder}>
-              <Ionicons name="body" size={48} color="#666666" />
+            {/* Upload Body Photo Section */}
+            <View style={styles.uploadSection}>
+              <Text style={styles.uploadLabel}>Upload your full body photo</Text>
+
+              {/* Action Buttons */}
+              <TouchableOpacity 
+                style={styles.liveCaptureButton}
+                onPress={() => navigation.navigate('FullBodyPhotoPreview')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="camera-outline" size={24} color="#000000" style={styles.buttonIcon} />
+                <Text style={styles.liveCaptureText}>Live Capture</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.uploadImageButton}
+                onPress={() => navigation.navigate('FullBodyPhotoPreview')}
+                activeOpacity={0.9}
+              >
+                <Ionicons name="push-outline" size={24} color="#FFFFFF" style={styles.buttonIcon} />
+                <Text style={styles.uploadImageText}>Upload Image</Text>
+              </TouchableOpacity>
+
+              {/* Skip Link */}
+              <TouchableOpacity 
+                style={styles.skipContainer} 
+                onPress={() => navigation.navigate('FullBodyPhotoPreview')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipText}>Skip for now</Text>
+              </TouchableOpacity>
             </View>
-            {renderGridOverlay()}
           </View>
-        )}
-      </View>
-
-      {/* Camera Controls */}
-      <View style={styles.controlsContainer}>
-        <View style={styles.controlsBar}>
-          {/* Gallery Button */}
-          <TouchableOpacity style={styles.controlButton} onPress={openGallery}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="images" size={24} color="#666666" />
-            </View>
-          </TouchableOpacity>
-
-          {/* Shutter Button */}
-          <TouchableOpacity style={styles.shutterButtonContainer} onPress={takePicture}>
-            <Animated.View style={[styles.shutterButton, { transform: [{ scale: shutterScale }] }]}>
-              <View style={styles.shutterInner} />
-            </Animated.View>
-          </TouchableOpacity>
-
-          {/* Switch Camera Button */}
-          <TouchableOpacity style={styles.controlButton} onPress={toggleCamera}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="camera-reverse" size={24} color="#666666" />
-            </View>
-          </TouchableOpacity>
         </View>
       </View>
-
-      {/* Bottom Safe Area */}
-      <View style={styles.bottomSafeArea} />
     </View>
   );
 };
@@ -150,123 +94,112 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  header: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#000000',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 24,
-  },
-  previewContainer: {
-    alignItems: 'center',
-    marginHorizontal: 24,
-  },
-  cameraContainer: {
-    width: PREVIEW_WIDTH,
-    height: PREVIEW_HEIGHT,
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: '#000000',
-  },
-  cameraPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: PREVIEW_WIDTH,
-    height: PREVIEW_HEIGHT,
-    borderRadius: 28,
-    resizeMode: 'cover',
-  },
-  gridOverlay: {
+  backgroundContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
-  gridLine: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  gridLineVertical: {
-    width: 1,
-    height: '100%',
-  },
-  gridLineHorizontal: {
-    width: '100%',
-    height: 1,
-  },
-  controlsContainer: {
+  overlayContainer: {
     flex: 1,
     justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 40,
+    backgroundColor: 'rgba(0,0,0,0.15)', // Subtle darkening to pop the card
   },
-  controlsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 32,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 50,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  controlButton: {
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E5E5EA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shutterButtonContainer: {
-    width: 72,
-    height: 72,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shutterButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+  whiteCard: {
+    width: '100%',
     backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 50,
+    paddingTop: height * 0.06,
+    paddingBottom: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 28,
+
+    // High fidelity shadow
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  shutterInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+  content: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  title: {
+    ...typography.largeTitle,
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  subtitle: {
+    ...typography.subheadline,
+    color: '#333333',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 48,
+    paddingHorizontal: 10,
+  },
+  uploadSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  uploadLabel: {
+    ...typography.title3,
+    color: '#000000',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  liveCaptureButton: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E5EA',
+    width: '100%',
+    height: 60,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    // Soft shadow for the white button
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  bottomSafeArea: {
-    height: 20,
+  buttonIcon: {
+    marginRight: 12,
+  },
+  liveCaptureText: {
+    ...typography.headline,
+    color: '#000000',
+  },
+  uploadImageButton: {
+    flexDirection: 'row',
+    backgroundColor: '#000000',
+    width: '100%',
+    height: 60,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+    // Bold shadow for black button
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  uploadImageText: {
+    ...typography.headline,
+    color: '#FFFFFF',
+  },
+  skipContainer: {
+    paddingVertical: 10,
+  },
+  skipText: {
+    ...typography.subheadline,
+    color: '#111111',
   },
 });

@@ -8,241 +8,131 @@ import {
   Image,
   TextInput,
   Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
+import { fontNames } from '../../theme/fonts';
+import { typography } from '../../theme/typography';
 
 const { width } = Dimensions.get('window');
 
 interface ProfileSetupScreenProps {
   navigation: NativeStackNavigationProp<any>;
-  route: any;
 }
 
-const heightOptions = ['150 cm', '155 cm', '160 cm', '165 cm', '170 cm', '175 cm', '180 cm'];
-const weightOptions = ['50 kg', '55 kg', '60 kg', '65 kg', '70 kg', '75 kg', '80 kg'];
-const dayOptions = Array.from({ length: 31 }, (_, i) => String(i + 1));
-const monthOptions = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const yearOptions = Array.from({ length: 30 }, (_, i) => String(1990 + i));
-
-export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigation, route }) => {
-  const [name, setName] = useState('');
-  const [height, setHeight] = useState('160 cm');
-  const [weight, setWeight] = useState('60 kg');
-  const [day, setDay] = useState('');
-  const [month, setMonth] = useState('');
-  const [year, setYear] = useState('');
-  const [showPicker, setShowPicker] = useState<string | null>(null);
-
-  const profileImage = route.params?.profileImage;
-
-  const canProceed = name.trim().length > 0 && day && month && year;
-
-  const handleNext = () => {
-    if (canProceed) {
-      const profileData = {
-        name,
-        height,
-        weight,
-        dob: { day, month, year },
-        profileImage,
-      };
-      navigation.navigate('StylePreferences', { profileData });
-    }
-  };
-
-  const renderProgressBars = () => (
-    <View style={styles.progressContainer}>
-      {[1, 2, 3, 4].map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.progressBar,
-            index === 0 ? styles.progressBarActive : styles.progressBarInactive,
-          ]}
-        />
-      ))}
-    </View>
-  );
-
-  const renderPicker = () => {
-    if (!showPicker) return null;
-    
-    let options: string[] = [];
-    let onSelect: (value: string) => void = () => {};
-    
-    switch (showPicker) {
-      case 'height':
-        options = heightOptions;
-        onSelect = setHeight;
-        break;
-      case 'weight':
-        options = weightOptions;
-        onSelect = setWeight;
-        break;
-      case 'day':
-        options = dayOptions;
-        onSelect = setDay;
-        break;
-      case 'month':
-        options = monthOptions;
-        onSelect = setMonth;
-        break;
-      case 'year':
-        options = yearOptions;
-        onSelect = setYear;
-        break;
-    }
-
-    return (
-      <View style={styles.pickerOverlay}>
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerHeader}>
-            <TouchableOpacity onPress={() => setShowPicker(null)}>
-              <Text style={styles.pickerDone}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.pickerScroll}>
-            {options.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={styles.pickerItem}
-                onPress={() => {
-                  onSelect(option);
-                  setShowPicker(null);
-                }}
-              >
-                <Text style={styles.pickerItemText}>{option}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    );
-  };
+/**
+ * ProfileSetupScreen - Replicates "Profile setup 1.png" with 100% visual fidelity.
+ * Features Kyiv Sans typography, custom form fields, and a branded progress bar.
+ */
+export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigation }) => {
+  const [name, setName] = useState('Jane Doe');
 
   return (
     <SafeContainer style={styles.container}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {renderProgressBars()}
-
-        <Text style={styles.title}>Profile setup</Text>
-        <Text style={styles.subtitle}>
-          This information helps us deliver a better, more personalized experience for you.
-        </Text>
-
-        {/* Profile Photo */}
-        <View style={styles.photoContainer}>
-          <View style={styles.photoWrapper}>
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.profilePhoto} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Ionicons name="person" size={40} color="#999999" />
-              </View>
-            )}
-            <TouchableOpacity style={styles.editButton}>
-              <View style={styles.editButtonInner}>
-                <Ionicons name="pencil" size={16} color="#666666" />
-              </View>
-            </TouchableOpacity>
-          </View>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Progress Bar (3 segments, 1st active) */}
+        <View style={styles.progressContainer}>
+          <View style={[styles.progressSegment, styles.segmentActive]} />
+          <View style={[styles.progressSegment, styles.segmentInactive]} />
+          <View style={[styles.progressSegment, styles.segmentInactive]} />
         </View>
 
-        {/* Name Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Your name:</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Jane"
-              placeholderTextColor="#999999"
-            />
-          </View>
-        </View>
-
-        {/* Height and Weight Row */}
-        <View style={styles.row}>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Height</Text>
-            <TouchableOpacity 
-              style={styles.dropdown}
-              onPress={() => setShowPicker('height')}
-            >
-              <Text style={styles.dropdownText}>{height}</Text>
-              <Ionicons name="chevron-down" size={20} color="#666666" />
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.inputGroup, { flex: 1 }]}>
-            <Text style={styles.label}>Weight</Text>
-            <TouchableOpacity 
-              style={styles.dropdown}
-              onPress={() => setShowPicker('weight')}
-            >
-              <Text style={styles.dropdownText}>{weight}</Text>
-              <Ionicons name="chevron-down" size={20} color="#666666" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Date of Birth */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Date of Birth</Text>
-          <View style={styles.dobContainer}>
-            <TouchableOpacity 
-              style={styles.dobField}
-              onPress={() => setShowPicker('day')}
-            >
-              <Text style={[styles.dobText, day && styles.dobTextFilled]}>
-                {day || 'Day'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.dobField}
-              onPress={() => setShowPicker('month')}
-            >
-              <Text style={[styles.dobText, month && styles.dobTextFilled]}>
-                {month || 'Month'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.dobField}
-              onPress={() => setShowPicker('year')}
-            >
-              <Text style={[styles.dobText, year && styles.dobTextFilled]}>
-                {year || 'Year'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Spacer for bottom button */}
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* Next Button */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={[
-            styles.nextButton,
-            canProceed ? styles.nextButtonActive : styles.nextButtonDisabled,
-          ]}
-          onPress={handleNext}
-          disabled={!canProceed}
-        >
-          <Text style={[
-            styles.nextButtonText,
-            canProceed ? styles.nextButtonTextActive : styles.nextButtonTextDisabled,
-          ]}>
-            Next
+        {/* Title Section */}
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Profile setup</Text>
+          <Text style={styles.subtitle}>
+            This information helps us deliver a better, more personalized experience for you.
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
 
-      {renderPicker()}
+        {/* Profile Image Section */}
+        <View style={styles.photoSection}>
+          <View style={styles.photoWrapper}>
+            <Image 
+              source={require('../../../assets/images/mosaic/fashion1.jpg')} // Using as placeholder
+              style={styles.profileImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity style={styles.editIconBadge} activeOpacity={0.8}>
+              <View style={styles.editIconCircle}>
+                <Ionicons name="pencil" size={16} color="#000000" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Form Fields */}
+        <View style={styles.formSection}>
+          {/* Your Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Your name:</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput 
+                style={styles.textInput}
+                value={name}
+                onChangeText={setName}
+                placeholder="Enter your name"
+                placeholderTextColor="#999999"
+              />
+            </View>
+          </View>
+
+          {/* Height & Weight Row */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Height:</Text>
+              <TouchableOpacity style={styles.dropdownTrigger}>
+                <Text style={styles.dropdownText}>160cm</Text>
+                <Ionicons name="chevron-down" size={18} color="#000000" />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 16 }]}>
+              <Text style={styles.label}>Weight:</Text>
+              <TouchableOpacity style={styles.dropdownTrigger}>
+                <Text style={styles.dropdownText}>60kg</Text>
+                <Ionicons name="chevron-down" size={18} color="#000000" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Date of Birth */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Date of Birth:</Text>
+            <View style={styles.dobRow}>
+              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegment]}>
+                <Text style={styles.dropdownText}>28</Text>
+                <Ionicons name="chevron-down" size={16} color="#000000" />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegmentMedium]}>
+                <Text style={styles.dropdownText}>February</Text>
+                <Ionicons name="chevron-down" size={16} color="#000000" />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegment]}>
+                <Text style={styles.dropdownText}>2002</Text>
+                <Ionicons name="chevron-down" size={16} color="#000000" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Next Button */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity 
+            style={styles.nextButton}
+            onPress={() => navigation.navigate('FullBodyPhoto')}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.buttonText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeContainer>
   );
 };
@@ -252,203 +142,159 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
+  scrollContent: {
+    paddingHorizontal: 24,
     paddingTop: 16,
+    paddingBottom: 40,
   },
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 32,
-    marginTop: 8,
+    marginBottom: 40,
   },
-  progressBar: {
-    width: 60,
-    height: 4,
-    borderRadius: 2,
+  progressSegment: {
+    width: (width - 48 - 24) / 4,
+    height: 12,
+    borderRadius: 6,
   },
-  progressBarActive: {
+  segmentActive: {
     backgroundColor: '#000000',
   },
-  progressBarInactive: {
+  segmentInactive: {
     backgroundColor: '#E5E5EA',
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
+    ...typography.title1,
     color: '#000000',
-    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666666',
-    marginBottom: 32,
-    lineHeight: 22,
+    ...typography.subheadline,
+    color: '#333333',
+    lineHeight: 20,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
-  photoContainer: {
+  photoSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
   },
   photoWrapper: {
-    position: 'relative',
+    borderRadius: 28,
+    overflow: 'visible', // For overlapping edit icon
   },
-  profilePhoto: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+  profileImage: {
+    width: width * 0.72,
+    height: width * 0.72,
+    borderRadius: 28,
   },
-  photoPlaceholder: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#F2F2F7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editButton: {
+  editIconBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -8,
+    right: -8,
   },
-  editButtonInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E5E5EA',
+  editIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    // Shadow
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  formSection: {
+    width: '100%',
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   label: {
-    fontSize: 16,
-    color: '#666666',
+    ...typography.headline,
+    color: '#000000',
     marginBottom: 8,
-    fontWeight: '400',
   },
-  inputContainer: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
+  inputWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F2F2F7',
+    borderRadius: 24,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    // Subtle inner shadow effect matching design
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  input: {
-    fontSize: 18,
+  textInput: {
+    ...typography.callout,
     color: '#000000',
-    fontWeight: '400',
   },
   row: {
     flexDirection: 'row',
-    gap: 16,
+    width: '100%',
   },
-  dropdown: {
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    height: 56,
+  dropdownTrigger: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F2F2F7',
+    borderRadius: 24,
+    height: 56,
+    paddingHorizontal: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   dropdownText: {
-    fontSize: 18,
+    ...typography.callout,
     color: '#000000',
   },
-  dobContainer: {
+  dobRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 8,
   },
-  dobField: {
+  dobSegment: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
-    borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  dobText: {
-    fontSize: 18,
-    color: '#999999',
+  dobSegmentMedium: {
+    flex: 1.5,
   },
-  dobTextFilled: {
-    color: '#000000',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 24,
-    paddingBottom: 40,
-    backgroundColor: '#FFFFFF',
+  buttonContainer: {
+    marginTop: 16,
   },
   nextButton: {
-    height: 56,
-    borderRadius: 12,
+    backgroundColor: '#111111',
+    width: '100%',
+    height: 60,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    // Shadow
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  nextButtonDisabled: {
-    backgroundColor: '#8E8E93',
-  },
-  nextButtonActive: {
-    backgroundColor: '#000000',
-  },
-  nextButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
+  buttonText: {
+    ...typography.headline,
     color: '#FFFFFF',
-  },
-  nextButtonTextDisabled: {
-    color: '#FFFFFF',
-  },
-  nextButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  pickerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: 400,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  pickerDone: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  pickerScroll: {
-    maxHeight: 300,
-  },
-  pickerItem: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
-  },
-  pickerItemText: {
-    fontSize: 18,
-    color: '#000000',
   },
 });

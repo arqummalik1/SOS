@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "sos-app",
-    "slug": "sos-app",
+    "slug": "sos-Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,10 +21,16 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.arqummalik1.sosMobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bcc5df5d-719f-46f0-ab1e-be7b1d7d3ea9"
+      }
     }
   }
 }

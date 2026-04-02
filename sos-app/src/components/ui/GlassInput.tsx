@@ -73,8 +73,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: typography.subheadline.fontWeight,
+    ...typography.subheadline,
     marginBottom: 8,
   },
   labelDark: {
@@ -104,9 +103,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   input: {
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
-    letterSpacing: typography.body.letterSpacing,
+    ...typography.body,
     padding: 0,
   },
   textDark: {
@@ -116,7 +113,7 @@ const styles = StyleSheet.create({
     color: colors.text.onLight,
   },
   errorText: {
-    fontSize: typography.caption1.fontSize,
+    ...typography.caption1,
     color: colors.ui.error,
     marginTop: 4,
   },

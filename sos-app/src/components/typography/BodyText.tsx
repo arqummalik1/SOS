@@ -60,9 +60,7 @@ export const BodyText: React.FC<BodyTextProps> = ({
     <Text
       style={[
         {
-          fontSize: textStyle.fontSize,
-          fontWeight: textStyle.fontWeight,
-          letterSpacing: textStyle.letterSpacing,
+          ...textStyle,
           color: getColor(),
           textAlign: center ? 'center' : 'left',
         },

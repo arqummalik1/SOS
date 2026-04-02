@@ -58,9 +58,7 @@ export const Caption: React.FC<CaptionProps> = ({
     <Text
       style={[
         {
-          fontSize: textStyle.fontSize,
-          fontWeight: textStyle.fontWeight,
-          letterSpacing: textStyle.letterSpacing,
+          ...textStyle,
           color: getColor(),
           textAlign: center ? 'center' : 'left',
         },
