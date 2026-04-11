@@ -65,19 +65,17 @@ The application has been **globalized** to use **Albert Sans** exclusively.
   - **Slower Pace**: Durations increased to 80s-100s for a more subtle, premium feel.
   - **Seamless Looping**: Implementation uses mirrored content duplication to prevent gaps.
 - **Input Fields**:
- 
   - **Phone**: Dual-pill (Black/White).
-  - **OTP**: 6 white boxes, "X" placeholders, focus-driven shadows.
+  - **OTP**: 6 boxes, responsive `flex` scaling with `aspectRatio: 0.8` to prevent mobile overflow.
 
 ---
 
 ## 📝 Changelog & Achievement Log
 
-### [2026-04-11] - Current Progress
-- **Global Typography Switch**: Transitioned the entire app from Kyiv Sans to Albert Sans. Centralized at the theme level.
-- **OTP Screen Replication**: Completed pixel-perfect replication of `OTP.png`. 6-digit focus-managed inputs.
-- **Sign In Screen Replication**: Completed pixel-perfect replication of `Login.png`. Dual-pill phone input system.
-- **Memory Initialization**: Established this `memory.md` file as the project's central knowledge repository.
+#### [2026-04-11] - Responsive UI & Background Refinements
+- **OTP Responsive Fix**: Switched `OTPInput` boxes from fixed width to `flex` scaling with `aspectRatio` to prevent layout overflow on smaller devices.
+- **Dynamic Background Polish**: Refined the `OnboardingMosaic` with 1:1 image square aspect ratios and extremely slow-motion durations (100s+) for a premium feel.
+- **Global Typography**: Standardized all screens to Albert Sans.
 
 ---
 
@@ -90,4 +88,4 @@ When working on this project, you **MUST**:
 5.  **Aim for Perfection**. If the design requires a specific shadow or radius, implement it exactly as per the Figma PNGs in `SOS-FigmaDesigns/`.
 
 ---
-*Last Updated: 2026-04-11 18:50:56*
+*Last Updated: 2026-04-11 19:50:48*

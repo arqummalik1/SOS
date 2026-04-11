@@ -95,8 +95,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   box: {
-    width: 48,
-    height: 60,
+    flex: 1,
+    aspectRatio: 0.8,
+    maxWidth: 50,
+    marginHorizontal: 3,
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
