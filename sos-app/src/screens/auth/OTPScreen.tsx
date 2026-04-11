@@ -5,8 +5,11 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  StatusBar,
   Dimensions,
+  KeyboardAvoidingView,
+  StatusBar,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
@@ -50,61 +53,80 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <OnboardingMosaic />
       
-      {/* Bottom Content Card */}
-      <View style={styles.bottomCard}>
-        <Text style={styles.title}>OTP</Text>
-        <Text style={styles.subtitle}>Please enter the 6-digit code</Text>
-
-          <View style={styles.inputContainer}>
-            <OTPInput
-              value={otp}
-              onChange={handleChange}
-            />
-          </View>
-
-          <View style={styles.termsContainer}>
-            <TouchableOpacity
-              style={styles.checkbox}
-              onPress={() => setAgreed(!agreed)}
-            >
-              {agreed && <Text style={styles.checkmark}>✓</Text>}
-            </TouchableOpacity>
-            <Text style={styles.termsText}>
-              I agree to the{' '}
-              <Text style={styles.termsLink}>Terms & Conditions</Text>
-              {' '}and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                (!isComplete || isLoading || !agreed) && styles.buttonDisabled
-              ]}
-              onPress={onVerify}
-              disabled={!isComplete || isLoading || !agreed}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.buttonText}>Verify</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.resendContainer}>
-            {resendTimer > 0 ? (
-              <Text style={styles.resendText}>
-                Resend code in {resendTimer}s
-              </Text>
-            ) : (
-              <TouchableOpacity onPress={handleResend}>
-                <Text style={styles.resendLink}>Resend code</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+      {/* Background Layer */}
+      <View style={styles.backgroundLayer} pointerEvents="none">
+        <OnboardingMosaic />
       </View>
+      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Transparent Spacer to allow background to show through */}
+          <View style={styles.spacer} />
+
+          {/* Bottom Content Card */}
+          <View style={styles.bottomCard}>
+            <Text style={styles.title}>OTP</Text>
+            <Text style={styles.subtitle}>Please enter the 6-digit code</Text>
+
+            <View style={styles.inputContainer}>
+              <OTPInput
+                value={otp}
+                onChange={handleChange}
+              />
+            </View>
+
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={() => setAgreed(!agreed)}
+              >
+                {agreed && <Text style={styles.checkmark}>✓</Text>}
+              </TouchableOpacity>
+              <Text style={styles.termsText}>
+                I agree to the{' '}
+                <Text style={styles.termsLink}>Terms & Conditions</Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  (!isComplete || isLoading) && styles.buttonDisabled
+                ]}
+                onPress={onVerify}
+                disabled={!isComplete || isLoading}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonText}>Verify</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.resendContainer}>
+              {resendTimer > 0 ? (
+                <Text style={styles.resendText}>
+                  Resend code in {resendTimer}s
+                </Text>
+              ) : (
+                <TouchableOpacity onPress={handleResend}>
+                  <Text style={styles.resendLink}>Resend code</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -114,14 +136,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  spacer: {
+    height: height * 0.52, // Allow background mosaic to show
+  },
   bottomCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
-    marginTop: -height * 0.08, 
     paddingHorizontal: 32,
     paddingTop: height * 0.04,
+    paddingBottom: height * 0.05,
     alignItems: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -12 },

@@ -9,6 +9,10 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PhoneInput } from '../../components/inputs/PhoneInput';
@@ -42,47 +46,66 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      <OnboardingMosaic />
-
-      {/* Bottom Content Card */}
-      <View style={styles.bottomCard}>
-        <Text style={styles.title}>Sign in</Text>
-        <Text style={styles.subtitle}>Enter Your Phone Number</Text>
-
-        <View style={styles.inputContainer}>
-          <PhoneInput
-            value={phone}
-            onChangeText={setPhone}
-            countryCode={countryCode}
-            onCountryCodeChange={setCountryCode}
-          />
-        </View>
-
-        <TouchableOpacity 
-          style={styles.primaryButton}
-          onPress={onLogin}
-          disabled={!isValid || isLoading}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.buttonText}>Login</Text>
-        </TouchableOpacity>
-
-        <View style={styles.termsContainer}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setAgreed(!agreed)}
-            activeOpacity={0.8}
-          >
-            {agreed && <Text style={styles.checkmark}>✓</Text>}
-          </TouchableOpacity>
-          <Text style={styles.termsText}>
-            I agree to the{' '}
-            <Text style={styles.termsLink}>Terms & Conditions</Text>
-            {' '}and{' '}
-            <Text style={styles.termsLink}>Privacy Policy</Text>
-          </Text>
-        </View>
+      
+      {/* Background Layer */}
+      <View style={styles.backgroundLayer} pointerEvents="none">
+        <OnboardingMosaic />
       </View>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Transparent Spacer to allow background to show through */}
+          <View style={styles.spacer} />
+
+          {/* Bottom Content Card */}
+          <View style={styles.bottomCard}>
+            <Text style={styles.title}>Sign in</Text>
+            <Text style={styles.subtitle}>Enter Your Phone Number</Text>
+
+            <View style={styles.inputContainer}>
+              <PhoneInput
+                value={phone}
+                onChangeText={setPhone}
+                countryCode={countryCode}
+                onCountryCodeChange={setCountryCode}
+              />
+            </View>
+
+            <TouchableOpacity 
+              style={styles.primaryButton}
+              onPress={onLogin}
+              disabled={!isValid || isLoading}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
+
+            <View style={styles.termsContainer}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={() => setAgreed(!agreed)}
+                activeOpacity={0.8}
+              >
+                {agreed && <Text style={styles.checkmark}>✓</Text>}
+              </TouchableOpacity>
+              <Text style={styles.termsText}>
+                I agree to the{' '}
+                <Text style={styles.termsLink}>Terms & Conditions</Text>
+                {' '}and{' '}
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -92,15 +115,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-
+  keyboardAvoid: {
+    flex: 1,
+  },
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  spacer: {
+    height: height * 0.52, // Allow background mosaic to show
+  },
   bottomCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
-    marginTop: -height * 0.08, 
     paddingHorizontal: 32,
     paddingTop: height * 0.04,
+    paddingBottom: height * 0.05,
     alignItems: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -12 },

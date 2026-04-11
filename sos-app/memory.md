@@ -66,16 +66,22 @@ The application has been **globalized** to use **Albert Sans** exclusively.
   - **Seamless Looping**: Implementation uses mirrored content duplication to prevent gaps.
 - **Input Fields**:
   - **Phone**: Dual-pill (Black/White).
-  - **OTP**: 6 boxes, responsive `flex` scaling with `aspectRatio: 0.8` to prevent mobile overflow.
+  - **OTP**: 6 boxes, responsive `flex` scaling with `aspectRatio: 0.8`.
+- **Keyboard Management & Layering**:
+  - **Layered Architecture**: `OnboardingMosaic` is set to `zIndex: -1` and `pointerEvents="none"` to prevent touch interception. The interactive card is wrapped in a `KeyboardAvoidingView` + `ScrollView` (`zIndex: 1`) to ensure inputs are accessible.
+  - **Hit-Testing**: Input bars in `PhoneInput` must have the `TextInput` fill the entire width (`flex: 1`) to ensure edge-to-edge clickability.
+- **UX Patterns**:
+  - **Form Validation**: Verification buttons remain enabled even if "Terms" are unchecked, allowing the fallback `Alert` logic to guide the user instead of "blocking" without feedback.
 
 ---
 
 ## 📝 Changelog & Achievement Log
 
-#### [2026-04-11] - Responsive UI & Background Refinements
-- **OTP Responsive Fix**: Switched `OTPInput` boxes from fixed width to `flex` scaling with `aspectRatio` to prevent layout overflow on smaller devices.
-- **Dynamic Background Polish**: Refined the `OnboardingMosaic` with 1:1 image square aspect ratios and extremely slow-motion durations (100s+) for a premium feel.
-- **Global Typography**: Standardized all screens to Albert Sans.
+#### [2026-04-11] - Robustness & Architecture Refinement
+- **Layered UI fix**: Resolved "unclickable" inputs by moving `OnboardingMosaic` to a background layer (`zIndex: -1`) and refactoring and onboarding screens to use a `ScrollView` inside a `KeyboardAvoidingView`.
+- **Keyboard Awareness**: Integrated `KeyboardAvoidingView` into `SignInScreen` and `OTPScreen` for seamless entry.
+- **Agreement Feedback Loop**: Fixed button logic to remain enabled for feedback alerts.
+- **OTP Responsive Fix**: Switched `OTPInput` boxes to `flex` scaling.
 
 ---
 

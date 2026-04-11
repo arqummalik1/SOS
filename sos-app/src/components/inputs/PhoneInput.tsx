@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0, // Moved to TextInput for better hit-testing
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
@@ -290,11 +290,14 @@ const styles = StyleSheet.create({
     borderColor: colors.ui.error,
   },
   input: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: 20,
     fontFamily: typography.subheadline.fontFamily,
     fontSize: 16,
     color: '#000000',
     letterSpacing: 2.5,
-    padding: 0,
     outlineWidth: 0,
   },
   modalOverlay: {
