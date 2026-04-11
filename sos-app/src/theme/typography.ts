@@ -1,26 +1,26 @@
-import { fontNames } from './fonts';
+import { fontNames, kyivFontNames } from './fonts';
 
 export const typography = {
   largeTitle: {
-    fontFamily: fontNames.bold,
+    fontFamily: kyivFontNames.bold,
     fontSize: 34,
     fontWeight: '700' as const,
     letterSpacing: 0.37,
   },
   title1: {
-    fontFamily: fontNames.bold,
+    fontFamily: kyivFontNames.bold,
     fontSize: 28,
     fontWeight: '700' as const,
     letterSpacing: 0.36,
   },
   title2: {
-    fontFamily: fontNames.bold,
+    fontFamily: kyivFontNames.bold,
     fontSize: 22,
     fontWeight: '700' as const,
     letterSpacing: 0.35,
   },
   title3: {
-    fontFamily: fontNames.medium,
+    fontFamily: kyivFontNames.medium,
     fontSize: 20,
     fontWeight: '600' as const,
     letterSpacing: 0.38,

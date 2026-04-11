@@ -8,13 +8,23 @@ import * as Font from 'expo-font';
  * This ensures consistent typography across iOS and Android.
  */
 
-// Albert Sans font family names (matching the .ttf file names)
+// Albert Sans font family names (Global Primary Font)
 export const fontNames: Record<FontWeight, string> = {
   light: 'AlbertSans-Light',
   regular: 'AlbertSans-Regular',
   medium: 'AlbertSans-Medium',
   bold: 'AlbertSans-Bold',
   heavy: 'AlbertSans-Black',
+};
+
+// KyivType Sans font family names - RE-MAPPED TO ALBERT SANS FOR GLOBAL CONSISTENCY
+// To change fonts globally, modify the fontNames object above.
+export const kyivFontNames: Record<FontWeight, string> = {
+  light: fontNames.light,
+  regular: fontNames.regular,
+  medium: fontNames.medium,
+  bold: fontNames.bold,
+  heavy: fontNames.heavy,
 };
 
 export type FontWeight = 'light' | 'regular' | 'medium' | 'bold' | 'heavy';
@@ -28,7 +38,7 @@ export const fontWeights: Record<FontWeight, string> = {
 };
 
 /**
- * useSOSFonts - Hook to load the Albert Sans fonts.
+ * useSOSFonts - Hook to load the Albert Sans and KyivType Sans fonts.
  * This hook is used in App.tsx to ensure fonts are ready before rendering.
  */
 export const useSOSFonts = () => {
@@ -39,17 +49,25 @@ export const useSOSFonts = () => {
     async function loadFonts() {
       try {
         await Font.loadAsync({
+          // Albert Sans
           'AlbertSans-Regular': require('../../assets/fonts/Albert Sans/AlbertSans-Regular.ttf'),
           'AlbertSans-Light': require('../../assets/fonts/Albert Sans/AlbertSans-Light.ttf'),
           'AlbertSans-Medium': require('../../assets/fonts/Albert Sans/AlbertSans-Medium.ttf'),
           'AlbertSans-Bold': require('../../assets/fonts/Albert Sans/AlbertSans-Bold.ttf'),
           'AlbertSans-Black': require('../../assets/fonts/Albert Sans/AlbertSans-Black.ttf'),
+          // KyivType Sans
+          'KyivTypeSans-Regular': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Regular.ttf'),
+          'KyivTypeSans-Light': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Light.ttf'),
+          'KyivTypeSans-Medium': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Medium.ttf'),
+          'KyivTypeSans-Bold': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Bold.ttf'),
+          'KyivTypeSans-Heavy': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Heavy.ttf'),
+          'KyivTypeSans-Black': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Black.ttf'),
+          'KyivTypeSans-Thin': require('../../assets/fonts/KyivType Sans/KyivTypeSans-Thin.ttf'),
         });
         setFontsLoaded(true);
       } catch (error) {
         console.error('Error loading fonts:', error);
         setFontError(error as Error);
-        // Still set loaded to true to prevent app from hanging
         setFontsLoaded(true);
       }
     }

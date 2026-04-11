@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { borderRadius } from '../../theme/spacing';
@@ -181,10 +182,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <TouchableOpacity onPress={() => setShowCountryPicker(true)}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setShowCountryPicker(true)}>
           <View style={styles.countryCode}>
             <Text style={styles.countryCodeValue}>{countryCode}</Text>
-            <Text style={styles.dropdownArrow}>▼</Text>
+            <Ionicons name="chevron-down" size={12} color="#FFFFFF" style={styles.chevron} />
           </View>
         </TouchableOpacity>
         <View
@@ -199,9 +200,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
             value={displayValue}
             onChangeText={handleChange}
             keyboardType="phone-pad"
-            placeholder="98XX XX89"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            maxLength={12}
+            placeholder="9  8  X  X  X  X  X  X  8  9"
+            placeholderTextColor="#C4C4C4"
+            maxLength={20}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
           />
@@ -254,43 +255,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    gap: 4,
+    backgroundColor: '#000000',
+    borderRadius: 28,
   },
   countryCodeValue: {
-    ...typography.body,
-    color: colors.text.primary,
+    fontFamily: typography.subheadline.fontFamily,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  dropdownArrow: {
-    fontSize: typography.caption2.fontSize,
-    color: colors.text.secondary,
-    marginLeft: 4,
+  chevron: {
+    marginTop: 1,
   },
   inputContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
   },
   inputFocused: {
-    borderColor: colors.accent.blue,
-    borderWidth: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   inputError: {
-    borderColor: colors.ui.error,
     borderWidth: 1,
+    borderColor: colors.ui.error,
   },
   input: {
-    ...typography.body,
-    color: colors.text.primary,
-    letterSpacing: 2,
+    fontFamily: typography.subheadline.fontFamily,
+    fontSize: 16,
+    color: '#000000',
+    letterSpacing: 2.5,
     padding: 0,
     outlineWidth: 0,
   },

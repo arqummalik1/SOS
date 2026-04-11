@@ -62,6 +62,7 @@ export const OTPInput: React.FC<OTPInputProps> = ({
             style={[
               styles.box,
               isFilled && styles.boxFilled,
+              isActive && styles.boxActive,
             ]}
           >
             <TextInput
@@ -76,6 +77,8 @@ export const OTPInput: React.FC<OTPInputProps> = ({
               keyboardType="number-pad"
               maxLength={1}
               selectTextOnFocus
+              placeholder="X"
+              placeholderTextColor="#BBBBBB"
             />
           </View>
         );
@@ -89,32 +92,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    paddingHorizontal: 4,
   },
   box: {
-    width: 46,
-    height: 56,
+    width: 48,
+    height: 60,
     borderRadius: 14,
-    backgroundColor: '#F2F2F7',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    // Shadow for "floating" look
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   boxFilled: {
-    borderColor: 'rgba(0,0,0,0.2)',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#EFEFEF',
+  },
+  boxActive: {
+    borderColor: '#E0E0E0',
+    borderWidth: 1.5,
   },
   input: {
     width: '100%',
     height: '100%',
     textAlign: 'center',
-    fontSize: typography.title3.fontSize,
-    fontWeight: typography.title3.fontWeight,
-    fontFamily: typography.title3.fontFamily,
+    fontSize: 22,
+    fontWeight: '600',
+    fontFamily: typography.title2.fontFamily,
     padding: 0,
+    outlineWidth: 0,
   },
   inputEmpty: {
-    color: '#999999',
+    color: '#BBBBBB',
   },
   inputFilled: {
     color: '#000000',

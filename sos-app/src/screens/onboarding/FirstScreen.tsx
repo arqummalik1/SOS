@@ -12,6 +12,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,63 +28,17 @@ export const FirstScreen: React.FC<FirstScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
-      {/* Background Mosaic - Dynamic image grid */}
-      <View style={styles.mosaicContainer}>
-        {/* Row 1 */}
-        <View style={styles.row}>
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion1.jpg')} 
-            style={[styles.mosaicImage, styles.imgR1L]} 
-            resizeMode="cover" 
-          />
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion2.jpg')} 
-            style={[styles.mosaicImage, styles.imgR1R]} 
-            resizeMode="cover" 
-          />
-        </View>
-        
-        {/* Row 2 */}
-        <View style={styles.row}>
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion4.jpg')} 
-            style={[styles.mosaicImage, styles.imgR2L]} 
-            resizeMode="cover" 
-          />
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion3.jpg')} 
-            style={[styles.mosaicImage, styles.imgR2C]} 
-            resizeMode="cover" 
-          />
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion5.jpg')} 
-            style={[styles.mosaicImage, styles.imgR2R]} 
-            resizeMode="cover" 
-          />
-        </View>
-
-        {/* Row 3 (Partially covered by card) */}
-        <View style={styles.row}>
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion6.jpg')} 
-            style={[styles.mosaicImage, styles.imgR3L]} 
-            resizeMode="cover" 
-          />
-          <Image 
-            source={require('../../../assets/images/mosaic/fashion2.jpg')} 
-            style={[styles.mosaicImage, styles.imgR3R]} 
-            resizeMode="cover" 
-          />
-        </View>
-      </View>
+      <OnboardingMosaic />
 
       {/* Bottom Content Card */}
       <View style={styles.bottomCard}>
         {/* Branding Section */}
         <View style={styles.brandContainer}>
-          <Text style={styles.sosLogo}>SOS</Text>
-          <Text style={styles.styleOnSpot}>Style On Spot</Text>
+          <Image 
+            source={require('../../../assets/logos/Group 1586.png')} 
+            style={styles.logoImage} 
+            resizeMode="contain" 
+          />
         </View>
 
         {/* Tagline */}
@@ -122,57 +77,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  mosaicContainer: {
-    height: height * 0.6,
-    width: '100%',
-    paddingTop: Platform.OS === 'ios' ? 40 : 20,
-    backgroundColor: '#F7F7F7',
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    width: width * 1.2, // Slightly wider row for overlapping feel
-    paddingHorizontal: 8,
-  },
-  mosaicImage: {
-    borderRadius: 28,
-    backgroundColor: '#EEEEEE',
-  },
-  // Exact Image sizing for Pixel-Perfection
-  imgR1L: {
-    width: width * 0.48,
-    height: height * 0.22,
-    marginRight: 12,
-  },
-  imgR1R: {
-    width: width * 0.52,
-    height: height * 0.22,
-  },
-  imgR2L: {
-    width: width * 0.12,
-    height: height * 0.2,
-    marginRight: 12,
-    marginLeft: -width * 0.05, // Negative margin to create edge cutout feel
-  },
-  imgR2C: {
-    width: width * 0.5,
-    height: height * 0.2,
-    marginRight: 12,
-  },
-  imgR2R: {
-    width: width * 0.4,
-    height: height * 0.2,
-  },
-  imgR3L: {
-    width: width * 0.4,
-    height: height * 0.2,
-    marginRight: 12,
-  },
-  imgR3R: {
-    width: width * 0.5,
-    height: height * 0.2,
-  },
 
   // Bottom Card implementation
   bottomCard: {
@@ -196,23 +100,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 36,
   },
-  sosLogo: {
-    ...typography.largeTitle,
-    color: '#000000',
-    lineHeight: 80,
-    textAlign: 'center',
-  },
-  styleOnSpot: {
-    ...typography.title3,
-    color: '#000000',
-    marginTop: -6,
+  logoImage: {
+    width: width * 0.45,
+    height: height * 0.12,
+    tintColor: '#000000',
   },
   tagline: {
-    ...typography.callout,
+    fontFamily: fontNames.regular,
+    fontSize: 16,
+    fontWeight: '400' as const,
+    letterSpacing: -0.32,
     color: '#333333',
     textAlign: 'center',
     lineHeight: 24,
-    maxWidth: width * 0.8,
+    maxWidth: Dimensions.get('window').width * 0.8,
   },
   spacer: {
     flex: 1,

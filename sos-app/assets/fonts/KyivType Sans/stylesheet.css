@@ -1,0 +1,91 @@
+@font-face {
+    font-family: 'KyivType Sans Heavy';
+    src: url('KyivTypeSans-Heavy.eot');
+    src: url('KyivTypeSans-Heavy.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Heavy.woff2') format('woff2'),
+        url('KyivTypeSans-Heavy.woff') format('woff'),
+        url('KyivTypeSans-Heavy.ttf') format('truetype'),
+        url('KyivTypeSans-Heavy.svg#KyivTypeSans-Heavy') format('svg');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans Light';
+    src: url('KyivTypeSans-Light.eot');
+    src: url('KyivTypeSans-Light.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Light.woff2') format('woff2'),
+        url('KyivTypeSans-Light.woff') format('woff'),
+        url('KyivTypeSans-Light.ttf') format('truetype'),
+        url('KyivTypeSans-Light.svg#KyivTypeSans-Light') format('svg');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans Bold';
+    src: url('KyivTypeSans-Bold.eot');
+    src: url('KyivTypeSans-Bold.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Bold.woff2') format('woff2'),
+        url('KyivTypeSans-Bold.woff') format('woff'),
+        url('KyivTypeSans-Bold.ttf') format('truetype'),
+        url('KyivTypeSans-Bold.svg#KyivTypeSans-Bold') format('svg');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans Medium';
+    src: url('KyivTypeSans-Medium.eot');
+    src: url('KyivTypeSans-Medium.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Medium.woff2') format('woff2'),
+        url('KyivTypeSans-Medium.woff') format('woff'),
+        url('KyivTypeSans-Medium.ttf') format('truetype'),
+        url('KyivTypeSans-Medium.svg#KyivTypeSans-Medium') format('svg');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans';
+    src: url('KyivTypeSans-Regular.eot');
+    src: url('KyivTypeSans-Regular.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Regular.woff2') format('woff2'),
+        url('KyivTypeSans-Regular.woff') format('woff'),
+        url('KyivTypeSans-Regular.ttf') format('truetype'),
+        url('KyivTypeSans-Regular.svg#KyivTypeSans-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans';
+    src: url('KyivTypeSans-Thin.eot');
+    src: url('KyivTypeSans-Thin.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Thin.woff2') format('woff2'),
+        url('KyivTypeSans-Thin.woff') format('woff'),
+        url('KyivTypeSans-Thin.ttf') format('truetype'),
+        url('KyivTypeSans-Thin.svg#KyivTypeSans-Thin') format('svg');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'KyivType Sans Black';
+    src: url('KyivTypeSans-Black.eot');
+    src: url('KyivTypeSans-Black.eot?#iefix') format('embedded-opentype'),
+        url('KyivTypeSans-Black.woff2') format('woff2'),
+        url('KyivTypeSans-Black.woff') format('woff'),
+        url('KyivTypeSans-Black.ttf') format('truetype'),
+        url('KyivTypeSans-Black.svg#KyivTypeSans-Black') format('svg');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+

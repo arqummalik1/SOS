@@ -5,15 +5,19 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  Image,
+  Dimensions,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MosaicBackground } from '../../components/layout/MosaicBackground';
-import { GlassBottomSheet } from '../../components/ui/GlassBottomSheet';
-import { GlassButton } from '../../components/ui/GlassButton';
 import { PhoneInput } from '../../components/inputs/PhoneInput';
 import { useAuthViewModel } from '../../viewmodels/useAuthViewModel';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
+
+const { width, height } = Dimensions.get('window');
 
 interface SignInScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -37,46 +41,48 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <MosaicBackground />
-      <GlassBottomSheet variant="light" height={400}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Sign in</Text>
-          <Text style={styles.subtitle}>Enter Your Phone Number</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <OnboardingMosaic />
 
-          <View style={styles.inputContainer}>
-            <PhoneInput
-              value={phone}
-              onChangeText={setPhone}
-              countryCode={countryCode}
-              onCountryCodeChange={setCountryCode}
-            />
-          </View>
+      {/* Bottom Content Card */}
+      <View style={styles.bottomCard}>
+        <Text style={styles.title}>Sign in</Text>
+        <Text style={styles.subtitle}>Enter Your Phone Number</Text>
 
-          <View style={styles.termsContainer}>
-            <TouchableOpacity
-              style={styles.checkbox}
-              onPress={() => setAgreed(!agreed)}
-            >
-              <View style={[styles.checkboxInner, agreed && styles.checkboxChecked]} />
-            </TouchableOpacity>
-            <Text style={styles.termsText}>
-              I agree to the{' '}
-              <Text style={styles.termsLink}>Terms & Conditions</Text>
-              {' '}and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <GlassButton
-              title="Login"
-              onPress={onLogin}
-              variant="solid"
-              disabled={!isValid || isLoading}
-            />
-          </View>
+        <View style={styles.inputContainer}>
+          <PhoneInput
+            value={phone}
+            onChangeText={setPhone}
+            countryCode={countryCode}
+            onCountryCodeChange={setCountryCode}
+          />
         </View>
-      </GlassBottomSheet>
+
+        <TouchableOpacity 
+          style={styles.primaryButton}
+          onPress={onLogin}
+          disabled={!isValid || isLoading}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+
+        <View style={styles.termsContainer}>
+          <TouchableOpacity
+            style={styles.checkbox}
+            onPress={() => setAgreed(!agreed)}
+            activeOpacity={0.8}
+          >
+            {agreed && <Text style={styles.checkmark}>✓</Text>}
+          </TouchableOpacity>
+          <Text style={styles.termsText}>
+            I agree to the{' '}
+            <Text style={styles.termsLink}>Terms & Conditions</Text>
+            {' '}and{' '}
+            <Text style={styles.termsLink}>Privacy Policy</Text>
+          </Text>
+        </View>
+      </View>
     </View>
   );
 };
@@ -84,58 +90,104 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  content: {
+
+  bottomCard: {
     flex: 1,
-    paddingTop: spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 50,
+    marginTop: -height * 0.08, 
+    paddingHorizontal: 32,
+    paddingTop: height * 0.04,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   title: {
-    fontSize: typography.title1.fontSize,
-    fontWeight: typography.title1.fontWeight,
+    fontFamily: typography.title1.fontFamily,
+    fontSize: 28,
+    lineHeight: 34,
     color: '#000000',
-    marginBottom: spacing.sm,
+    marginBottom: 10,
+    textAlign: 'center',
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: typography.subheadline.fontSize,
-    fontWeight: typography.subheadline.fontWeight,
+    fontFamily: typography.body.fontFamily,
+    fontSize: 15,
     color: '#666666',
-    marginBottom: spacing.xxl,
+    marginBottom: 36,
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
   inputContainer: {
-    marginBottom: spacing.lg,
+    width: '100%',
+    marginBottom: 32,
+  },
+  primaryButton: {
+    backgroundColor: '#0A0A0A',
+    width: '100%',
+    height: 58,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  buttonDisabled: {
+    backgroundColor: '#999999',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonText: {
+    fontFamily: typography.headline.fontFamily,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   termsContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0,
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
+    width: 18,
+    height: 18,
+    borderWidth: 1,
     borderColor: '#000000',
-    marginRight: spacing.md,
+    borderRadius: 4,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  checkboxInner: {
-    width: 12,
-    height: 12,
-  },
-  checkboxChecked: {
-    backgroundColor: '#000000',
+  checkmark: {
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   termsText: {
-    flex: 1,
-    fontSize: typography.footnote.fontSize,
-    color: '#666666',
+    fontFamily: typography.footnote.fontFamily,
+    fontSize: 12,
+    color: '#000000',
     lineHeight: 18,
   },
   termsLink: {
     color: '#000000',
-    fontWeight: '600',
-  },
-  buttonContainer: {
-    width: '100%',
+    fontFamily: typography.footnote.fontFamily,
+    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
 });
