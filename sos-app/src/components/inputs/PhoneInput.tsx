@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { borderRadius } from '../../theme/spacing';
@@ -181,10 +182,10 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <TouchableOpacity onPress={() => setShowCountryPicker(true)}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setShowCountryPicker(true)}>
           <View style={styles.countryCode}>
             <Text style={styles.countryCodeValue}>{countryCode}</Text>
-            <Text style={styles.dropdownArrow}>▼</Text>
+            <Ionicons name="chevron-down" size={12} color="#FFFFFF" style={styles.chevron} />
           </View>
         </TouchableOpacity>
         <View
@@ -199,9 +200,9 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
             value={displayValue}
             onChangeText={handleChange}
             keyboardType="phone-pad"
-            placeholder="98XX XX89"
-            placeholderTextColor="rgba(255,255,255,0.35)"
-            maxLength={12}
+            placeholder="9  8  X  X  X  X  X  X  8  9"
+            placeholderTextColor="#C4C4C4"
+            maxLength={20}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
           />
@@ -254,46 +255,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    gap: 4,
+    backgroundColor: '#000000',
+    borderRadius: 28,
   },
   countryCodeValue: {
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
-    color: colors.text.primary,
+    fontFamily: typography.subheadline.fontFamily,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  dropdownArrow: {
-    fontSize: 10,
-    color: colors.text.secondary,
-    marginLeft: 4,
+  chevron: {
+    marginTop: 1,
   },
   inputContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 0, // Moved to TextInput for better hit-testing
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
   },
   inputFocused: {
-    borderColor: colors.accent.blue,
-    borderWidth: 2,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
   inputError: {
-    borderColor: colors.ui.error,
     borderWidth: 1,
+    borderColor: colors.ui.error,
   },
   input: {
-    fontSize: typography.body.fontSize,
-    fontWeight: typography.body.fontWeight,
-    color: colors.text.primary,
-    letterSpacing: 2,
-    padding: 0,
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    paddingHorizontal: 20,
+    fontFamily: typography.subheadline.fontFamily,
+    fontSize: 16,
+    color: '#000000',
+    letterSpacing: 2.5,
     outlineWidth: 0,
   },
   modalOverlay: {
@@ -330,8 +334,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(120,120,128,0.3)',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.title3,
     color: colors.text.onLight,
     textAlign: 'center',
     marginBottom: 16,
@@ -350,17 +353,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   countryFlag: {
-    fontSize: 28,
+    fontSize: typography.title1.fontSize,
   },
   countryName: {
     flex: 1,
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.onLight,
-    fontWeight: '500',
   },
   countryCodeLabel: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.onLightSecondary,
-    fontWeight: '500',
   },
 });

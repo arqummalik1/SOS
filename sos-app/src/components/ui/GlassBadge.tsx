@@ -37,8 +37,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   text: {
-    fontSize: typography.caption1.fontSize,
-    fontWeight: typography.caption1.fontWeight,
+    ...typography.caption1,
     color: '#FFFFFF',
   },
 });

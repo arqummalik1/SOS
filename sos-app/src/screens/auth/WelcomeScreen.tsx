@@ -4,11 +4,14 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Image,
   Dimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { fontNames } from '../../theme/fonts';
+import { typography } from '../../theme/typography';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,57 +23,78 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#7C3AED', '#6D28D9', '#5B21B6']}
+        colors={['#E8D5E8', '#D4B8D4', '#C8A8C8']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        {/* Decorative circles */}
-        <View style={[styles.circle, styles.circle1]} />
-        <View style={[styles.circle, styles.circle2]} />
-        <View style={[styles.circle, styles.circle3]} />
-        <View style={[styles.circle, styles.circle4]} />
-
-        {/* Main Content */}
-        <View style={styles.content}>
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="sparkles" size={32} color="#7C3AED" />
-            </View>
-            <Text style={styles.logoText}>SOS</Text>
-            <Text style={styles.subtitle}>Style on Spot</Text>
-          </View>
-
-          {/* Tagline */}
-          <Text style={styles.tagline}>
-            "Where Elegance{'\n'}Meets Everyday Dressing."
-          </Text>
+        {/* Header - Work Outfit Dropdown */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.dropdown}>
+            <Text style={styles.dropdownText}>Work outfit</Text>
+            <Ionicons name="chevron-down" size={20} color="#333" />
+          </TouchableOpacity>
         </View>
 
-        {/* Bottom Card */}
-        <View style={styles.bottomCard}>
-          <Text style={styles.cardTitle}>Welcome to Style on Spot</Text>
-          <Text style={styles.cardSubtitle}>
-            Discover your perfect style with AI-powered fashion recommendations
-          </Text>
+        {/* Main Content Container */}
+        <View style={styles.mainContent}>
+          {/* Large MODERN MUSE Text - Behind Model */}
+          <View style={styles.titleContainer}>
+            <Text style={styles.modernMuseText}>MODERN MUSE</Text>
+          </View>
 
-          <TouchableOpacity
-            style={styles.getStartedButton}
-            onPress={() => navigation.navigate('SignIn')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.getStartedText}>Get Started</Text>
-          </TouchableOpacity>
+          {/* Model Image Container */}
+          <View style={styles.modelContainer}>
+            <Image
+              source={require('../../../assets/VirtualTryOn/Frame 1000006731.png')}
+              style={styles.modelImage}
+              resizeMode="contain"
+            />
+          </View>
 
-          <TouchableOpacity
-            style={styles.loginLink}
-            onPress={() => navigation.navigate('SignIn')}
-          >
-            <Text style={styles.loginText}>
-              Already have an account? <Text style={styles.loginBold}>Login</Text>
-            </Text>
-          </TouchableOpacity>
+          {/* Clothing Items - Right Side */}
+          <View style={styles.clothingPanel}>
+            <View style={styles.clothingItem}>
+              <Image
+                source={require('../../../assets/VirtualTryOn/sugggestion1.png')}
+                style={styles.clothingImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.clothingItem}>
+              <Image
+                source={require('../../../assets/VirtualTryOn/suggestion2.png')}
+                style={styles.clothingImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.clothingItem}>
+              <Image
+                source={require('../../../assets/VirtualTryOn/suggestion3.png')}
+                style={styles.clothingImage}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={styles.clothingItem}>
+              <Image
+                source={require('../../../assets/VirtualTryOn/suggestios.png')}
+                style={styles.clothingImage}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Refresh Button */}
+        <TouchableOpacity style={styles.refreshButton}>
+          <View style={styles.refreshCircle}>
+            <Ionicons name="refresh" size={24} color="#9B7BA0" />
+          </View>
+        </TouchableOpacity>
+
+        {/* Expand Indicator */}
+        <View style={styles.expandContainer}>
+          <Ionicons name="chevron-down" size={28} color="#666" />
         </View>
       </LinearGradient>
     </View>
@@ -83,126 +107,111 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    alignItems: 'flex-start',
+  },
+  dropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0E8F0',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  dropdownText: {
+    fontFamily: fontNames.medium,
+    fontSize: 16,
+    color: '#333333',
+  },
+  mainContent: {
+    flex: 1,
+    flexDirection: 'row',
     position: 'relative',
   },
-  circle: {
+  titleContainer: {
     position: 'absolute',
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    top: '15%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1,
   },
-  circle1: {
-    width: 350,
-    height: 350,
-    top: -100,
-    right: -100,
+  modernMuseText: {
+    fontFamily: fontNames.bold,
+    fontSize: 56,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  circle2: {
-    width: 250,
-    height: 250,
-    top: 50,
-    left: -80,
-  },
-  circle3: {
-    width: 180,
-    height: 180,
-    top: 200,
-    right: 20,
-  },
-  circle4: {
-    width: 120,
-    height: 120,
-    bottom: 300,
-    left: 50,
-  },
-  content: {
+  modelContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    zIndex: 2,
+    position: 'relative',
   },
-  logoContainer: {
+  modelImage: {
+    width: width * 0.75,
+    height: height * 0.55,
+    marginTop: 40,
+  },
+  clothingPanel: {
+    width: 80,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 60,
+    gap: 12,
+    marginRight: 15,
+    zIndex: 3,
   },
-  logoCircle: {
+  clothingItem: {
     width: 70,
     height: 70,
-    borderRadius: 35,
     backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  logoText: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-    marginBottom: 4,
+  clothingImage: {
+    width: 50,
+    height: 50,
   },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-    letterSpacing: 1,
+  refreshButton: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    zIndex: 10,
   },
-  tagline: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 32,
-    marginTop: 20,
-  },
-  bottomCard: {
+  refreshCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 30,
-    paddingTop: 35,
-    paddingBottom: 50,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  cardSubtitle: {
-    fontSize: 15,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 30,
-    lineHeight: 22,
-  },
-  getStartedButton: {
-    backgroundColor: '#1F2937',
-    borderRadius: 14,
-    height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  getStartedText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  loginLink: {
+  expandContainer: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
     alignItems: 'center',
-  },
-  loginText: {
-    fontSize: 15,
-    color: '#6B7280',
-  },
-  loginBold: {
-    fontWeight: '600',
-    color: '#1F2937',
   },
 });

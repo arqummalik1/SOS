@@ -62,14 +62,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem('userPhone');
-    await AsyncStorage.removeItem('isOnboarded');
-    await AsyncStorage.removeItem('userData');
-    setState({
-      isAuthenticated: false,
-      isOnboarded: false,
-      phone: null,
-    });
+    try {
+      // Clear all AsyncStorage data
+      await AsyncStorage.removeItem('userPhone');
+      await AsyncStorage.removeItem('isOnboarded');
+      await AsyncStorage.removeItem('userData');
+      await AsyncStorage.removeItem('savedOutfits');
+      
+      // Reset auth state
+      setState({
+        isAuthenticated: false,
+        isOnboarded: false,
+        phone: null,
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   return (

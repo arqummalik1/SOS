@@ -19,3 +19,8 @@ export {
   useSOSFonts,
   type FontWeight 
 } from './fonts';
+
+export {
+  typography,
+  type TypographyStyle,
+} from './typography';

@@ -9,6 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme';
 import { SOSText } from './SOSText';
+import { typography } from '../theme/typography';
 
 interface SOSInputProps extends TextInputProps {
   label?: string;
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: typography.body.fontSize,
   },
   rightIcon: {
     marginLeft: 12,

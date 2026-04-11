@@ -11,6 +11,7 @@ import { GlassBottomSheet } from '../../components/ui/GlassBottomSheet';
 import { GlassButton } from '../../components/ui/GlassButton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { fontNames } from '../../theme/fonts';
 
 interface SplashScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -69,7 +70,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   logo: {
-    fontSize: 52,
+    fontSize: typography.largeTitle.fontSize,
+    fontFamily: fontNames.bold,
     fontWeight: '800',
     letterSpacing: -2,
     color: '#000000',

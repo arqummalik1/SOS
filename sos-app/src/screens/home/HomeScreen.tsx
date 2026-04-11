@@ -21,6 +21,8 @@ import { StaggeredItem } from '../../components/animations/StaggeredItem';
 import { ScaleButton } from '../../components/animations/ScaleButton';
 import { Outfit } from '../../models/Outfit.model';
 
+import { WelcomeEmptyState } from './components/WelcomeEmptyState';
+
 const { width } = Dimensions.get('window');
 
 interface HomeScreenProps {
@@ -30,6 +32,17 @@ interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { featured, trending, handleSave, isSaved } = useHomeViewModel();
   const { user } = useUser();
+
+  // Show Welcome screen if wardrobe is empty (as per design)
+  if (!user?.wardrobeItems || user.wardrobeItems.length === 0) {
+    return (
+      <WelcomeEmptyState 
+        onOpenCamera={() => navigation.navigate('AddItemCamera')}
+        onUploadImage={() => navigation.navigate('AddItemCamera')}
+        onDoItLater={() => {}}
+      />
+    );
+  }
 
   const renderFeaturedCard = (outfit: Outfit) => (
     <ScaleButton key={outfit.id} scale={0.97}>

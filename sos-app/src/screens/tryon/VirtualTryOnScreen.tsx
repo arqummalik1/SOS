@@ -1,132 +1,122 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  Dimensions,
+  Image,
+  ScrollView,
+  StatusBar,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
-  Dimensions,
-  Animated,
-  Image,
+  View,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { fontNames } from '../../theme/fonts';
+import { typography } from '../../theme/typography';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-interface VirtualTryOnScreenProps {
+type VirtualTryOnScreenProps = {
   navigation: NativeStackNavigationProp<any>;
-  route?: any;
-}
+};
 
-export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ 
-  navigation, 
-  route 
-}) => {
-  const [facing, setFacing] = useState<CameraType>('front');
-  const [permission, requestPermission] = useCameraPermissions();
-  const [showOutfit, setShowOutfit] = useState(true);
-  const [saved, setSaved] = useState(false);
-  
-  const outfit = route?.params?.outfit || {
-    id: '1',
-    name: 'Summer Casual',
-    image: 'https://example.com/outfit.png',
-  };
+const HERO_IMAGE = require('../../../assets/VirtualTryOn/Frame 1000006731.png');
+const ALL_ICONS_IMAGE = require('../../../assets/VirtualTryOn/allIconsTogether.png');
 
-  const toggleCameraFacing = () => {
-    setFacing(current => (current === 'back' ? 'front' : 'back'));
-  };
+const CLOTHES = [
+  { id: 'front-red', image: require('../../../assets/VirtualTryOn/suggestedcloth.png') },
+  { id: 'cream-top', image: require('../../../assets/VirtualTryOn/suggestios.png') },
+  { id: 'blue-jacket', image: require('../../../assets/VirtualTryOn/sugggestion1.png') },
+  { id: 'back-red', image: require('../../../assets/VirtualTryOn/Frame 1000006728 (1).png') },
+  { id: 'pants', image: require('../../../assets/VirtualTryOn/suggestion2.png') },
+  { id: 'brown-top', image: require('../../../assets/VirtualTryOn/suggestion3.png') },
+];
 
-  const handleClose = () => {
-    navigation.goBack();
-  };
+const ACTION_ICONS = [
+  { id: 'heart', image: require('../../../assets/VirtualTryOn/HeartIcon.png') },
+  { id: 'dislike', image: require('../../../assets/VirtualTryOn/dislikeIcon.png') },
+  { id: 'save', image: require('../../../assets/VirtualTryOn/saveIcon.png') },
+  { id: 'shuffle', image: null },
+  { id: 'star', image: require('../../../assets/VirtualTryOn/StarIcon.png') },
+  { id: 'calendar', image: require('../../../assets/VirtualTryOn/CalanderIcon.png') },
+];
 
-  const handleSave = () => {
-    setSaved(!saved);
-  };
+export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigation }) => {
+  const [selectedId, setSelectedId] = useState('front-red');
 
-  const toggleOutfit = () => {
-    setShowOutfit(!showOutfit);
-  };
-
-  if (!permission) {
-    return <View style={styles.container} />;
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Ionicons name="camera" size={64} color="#7C3AED" />
-        <Text style={styles.permissionText}>We need your permission to use the camera</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <Text style={styles.closeButtonText}>Close</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const heroImage = useMemo(() => HERO_IMAGE, []);
 
   return (
     <View style={styles.container}>
-      {/* Camera View */}
-      <CameraView style={styles.camera} facing={facing}>
-        {/* Overlay Controls */}
-        <View style={styles.overlay}>
-          {/* Top Controls */}
-          <View style={styles.topControls}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleClose}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.controlButton, saved && styles.controlButtonActive]} 
-              onPress={handleSave}
-            >
-              <Ionicons 
-                name={saved ? "heart" : "heart-outline"} 
-                size={28} 
-                color={saved ? "#FF375F" : "#FFFFFF"} 
-              />
-            </TouchableOpacity>
-          </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F4F4" />
 
-          {/* Outfit Preview Overlay */}
-          {showOutfit && (
-            <Animated.View style={styles.outfitOverlay}>
-              <View style={styles.outfitCard}>
-                <Image 
-                  source={{ uri: outfit.image }} 
-                  style={styles.outfitImage}
-                  resizeMode="contain"
-                />
-                <Text style={styles.outfitName}>{outfit.name}</Text>
-              </View>
-            </Animated.View>
-          )}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topInset} />
 
-          {/* Bottom Controls */}
-          <View style={styles.bottomControls}>
-            <TouchableOpacity style={styles.controlButton} onPress={toggleOutfit}>
-              <Ionicons 
-                name={showOutfit ? "eye" : "eye-off"} 
-                size={24} 
-                color="#FFFFFF" 
-              />
-            </TouchableOpacity>
+        <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity style={styles.captureButton}>
-              <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
+        <View style={styles.headerWrap}>
+          <Text style={styles.heading}>Virtual Try-On</Text>
+          <Text style={styles.subHeading}>Lorem Ipsum El Dolor alpus golum</Text>
+        </View>
 
-            <TouchableOpacity style={styles.controlButton} onPress={toggleCameraFacing}>
-              <Ionicons name="camera-reverse" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+        <View style={styles.heroWrap}>
+          <Image source={heroImage} style={styles.heroImage} resizeMode="cover" />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.clothesRow}
+        >
+          {CLOTHES.map((cloth) => {
+            const selected = cloth.id === selectedId;
+            return (
+              <TouchableOpacity
+                key={cloth.id}
+                activeOpacity={0.85}
+                onPress={() => setSelectedId(cloth.id)}
+                style={[styles.clothCard, selected && styles.clothCardActive]}
+              >
+                <Image source={cloth.image} style={styles.clothImage} resizeMode="cover" />
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.actionsWrap}>
+          <View style={styles.actionsRow}>
+            {ACTION_ICONS.map((icon, index) => (
+              <TouchableOpacity key={icon.id} style={styles.actionButton} activeOpacity={0.85}>
+                {icon.image ? (
+                  <Image source={icon.image} style={styles.actionIconImage} resizeMode="contain" />
+                ) : (
+                  <View style={styles.shuffleClipper}>
+                    <Image
+                      source={ALL_ICONS_IMAGE}
+                      resizeMode="cover"
+                      style={[
+                        styles.shuffleSprite,
+                        {
+                          transform: [{ translateX: -(index * 74) }],
+                        },
+                      ]}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
-      </CameraView>
+
+        <View style={styles.bottomGap} />
+      </ScrollView>
     </View>
   );
 };
@@ -134,117 +124,110 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#F4F4F4',
   },
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  permissionText: {
-    fontSize: 18,
-    color: '#374151',
-    textAlign: 'center',
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  permissionButton: {
-    backgroundColor: '#7C3AED',
-    borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-    marginBottom: 16,
-  },
-  permissionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  closeButton: {
-    padding: 16,
-  },
-  closeButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-  camera: {
+  scroll: {
     flex: 1,
   },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'space-between',
+  scrollContent: {
+    paddingBottom: 8,
+    paddingHorizontal: 16,
   },
-  topControls: {
+  topInset: {
+    height: 20,
+  },
+  backRow: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 4,
   },
-  controlButton: {
-    width: 44,
-    height: 44,
+  backArrow: {
+    ...typography.title2,
+    color: '#161616',
+  },
+  backText: {
+    ...typography.caption1,
+    color: '#2D2D2D',
+  },
+  headerWrap: {
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  heading: {
+    ...typography.largeTitle,
+    color: '#151515',
+  },
+  subHeading: {
+    marginTop: 4,
+    ...typography.subheadline,
+    color: '#2B2B2B',
+  },
+  heroWrap: {
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  heroImage: {
+    width: width - 32,
+    height: width * 1.36,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
+  },
+  clothesRow: {
+    marginTop: 18,
+    paddingHorizontal: 16,
+    gap: 10,
+    paddingRight: 28,
+  },
+  clothCard: {
+    width: 112,
+    height: 112,
+    borderRadius: 13,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#DFDFDF',
+    backgroundColor: '#F2F2F2',
+  },
+  clothCardActive: {
+    borderColor: '#B4B4B4',
+  },
+  clothImage: {
+    width: '100%',
+    height: '100%',
+  },
+  actionsWrap: {
+    marginTop: 18,
     alignItems: 'center',
   },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
-  outfitOverlay: {
-    position: 'absolute',
-    bottom: 180,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  outfitCard: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  outfitImage: {
-    width: 120,
-    height: 160,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  outfitName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginTop: 12,
-  },
-  bottomControls: {
+  actionsRow: {
+    width: width - 22,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 60,
   },
-  captureButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  actionButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  captureButtonInner: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+  actionIconImage: {
+    width: 58,
+    height: 58,
+  },
+  shuffleClipper: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    overflow: 'hidden',
+  },
+  shuffleSprite: {
+    width: 446,
+    height: 88,
+    marginTop: -15,
+  },
+  bottomGap: {
+    height: 94,
   },
 });

@@ -57,9 +57,7 @@ export const Heading: React.FC<HeadingProps> = ({
     <Text
       style={[
         {
-          fontSize: textStyle.fontSize,
-          fontWeight: textStyle.fontWeight,
-          letterSpacing: textStyle.letterSpacing,
+          ...textStyle,
           color: getColor(),
         },
         style,

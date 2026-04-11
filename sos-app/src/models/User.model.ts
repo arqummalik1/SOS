@@ -10,6 +10,7 @@ export interface User {
   stylePreferences: string[];
   colorPreferences: string[];
   budgetRange: string;
+  wardrobeItems: string[];
 }
 
 export interface ProfileSetupData {

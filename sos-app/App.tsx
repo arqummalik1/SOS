@@ -1,11 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/store/AuthContext';
 import { UserProvider } from './src/store/UserContext';
 import { OutfitProvider } from './src/store/OutfitContext';
 import { ThemeProvider } from './src/theme';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { useSOSFonts } from './src/theme/fonts';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
@@ -46,6 +47,19 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 console.log('App starting...');
 
 export default function App() {
+  const { fontsLoaded, fontError } = useSOSFonts();
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#9B7BA0" />
+      </View>
+    );
+  }
+
+  if (fontError) {
+    console.error('Font loading error:', fontError);
+  }
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -69,6 +83,12 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F2F2F2',
   },
   errorContainer: {
     flex: 1,
