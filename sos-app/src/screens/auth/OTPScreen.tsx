@@ -55,7 +55,7 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
       {/* Background Layer */}
-      <View style={styles.backgroundLayer} pointerEvents="none">
+      <View style={[styles.backgroundLayer, { pointerEvents: 'none' }]}>
         <OnboardingMosaic />
       </View>
       

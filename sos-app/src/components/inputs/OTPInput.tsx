@@ -127,7 +127,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: typography.title2.fontFamily,
     padding: 0,
-    outlineWidth: 0,
+    // Web-specific: remove blue outline
+    // @ts-ignore - web only property
+    outlineStyle: 'none',
   },
   inputEmpty: {
     color: '#BBBBBB',

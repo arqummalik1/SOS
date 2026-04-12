@@ -38,6 +38,7 @@ export const FirstScreen: React.FC<FirstScreenProps> = ({ navigation }) => {
             source={require('../../../assets/logos/Group 1586.png')} 
             style={styles.logoImage} 
             resizeMode="contain" 
+            tintColor="#000000"
           />
         </View>
 
@@ -103,7 +104,6 @@ const styles = StyleSheet.create({
   logoImage: {
     width: width * 0.45,
     height: height * 0.12,
-    tintColor: '#000000',
   },
   tagline: {
     fontFamily: fontNames.regular,

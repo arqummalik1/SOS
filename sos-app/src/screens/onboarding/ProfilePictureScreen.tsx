@@ -106,22 +106,16 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
 
       <View style={styles.controlsContainer}>
         <View style={styles.controlsBar}>
-          <TouchableOpacity style={styles.controlButton} onPress={openGallery}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="images" size={24} color="#666666" />
-            </View>
+          <TouchableOpacity style={styles.actionIconButton} onPress={openGallery}>
+            <Image source={require('../../../assets/camera/GalleryIcon.png')} style={styles.actionIconImage} resizeMode="contain" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.shutterButtonContainer} onPress={takePicture}>
-            <Animated.View style={[styles.shutterButton, { transform: [{ scale: shutterScale }] }]}>
-              <View style={styles.shutterInner} />
-            </Animated.View>
+            <Animated.Image source={require('../../../assets/camera/CaptureIcon.png')} style={[styles.shutterImage, { transform: [{ scale: shutterScale }] }]} resizeMode="contain" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.controlButton} onPress={toggleCamera}>
-            <View style={styles.iconCircle}>
-              <Ionicons name="camera-reverse" size={24} color="#666666" />
-            </View>
+          <TouchableOpacity style={styles.actionIconButton} onPress={toggleCamera}>
+            <Image source={require('../../../assets/camera/CameraIcon.png')} style={styles.actionIconImage} resizeMode="contain" />
           </TouchableOpacity>
         </View>
       </View>
@@ -153,17 +147,22 @@ const styles = StyleSheet.create({
     fontFamily: fontNames.regular,
     color: '#666666',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     paddingHorizontal: 24,
   },
   previewContainer: {
+    flex: 1,
     alignItems: 'center',
-    marginHorizontal: 24,
+    marginHorizontal: 21,
+    width: width - 42,
+    marginBottom: 24,
   },
   cameraContainer: {
-    width: PREVIEW_SIZE,
-    height: PREVIEW_SIZE,
-    borderRadius: 28,
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
     overflow: 'hidden',
     backgroundColor: '#000000',
   },
@@ -173,9 +172,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   previewImage: {
-    width: PREVIEW_SIZE,
-    height: PREVIEW_SIZE,
-    borderRadius: 28,
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
     resizeMode: 'cover',
   },
   gridOverlay: {
@@ -198,7 +197,6 @@ const styles = StyleSheet.create({
     height: 1,
   },
   controlsContainer: {
-    flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 40,
@@ -207,52 +205,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 32,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#EAEAEA',
     borderRadius: 50,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
-  controlButton: {
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E5E5EA',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shutterButtonContainer: {
-    width: 72,
-    height: 72,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shutterButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    gap: 32,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  shutterInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E5EA',
+  actionIconButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionIconImage: {
+    width: '100%',
+    height: '100%',
+  },
+  shutterButtonContainer: {
+    width: 68,
+    height: 68,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shutterImage: {
+    width: 68,
+    height: 68,
   },
   bottomSafeArea: {
     height: 20,

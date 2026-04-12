@@ -55,9 +55,13 @@ The application has been **globalized** to use **Albert Sans** exclusively.
 ### UI Tokens & Constraints
 - **Primary Buttons**: Black (`#0A0A0A`), Height: 58, Radius: 14.
 - **Card Aesthetics**:
-  - **Radius**: Large 50px radius for top corners of bottom cards.
-  - **Shadows**: Subtle, multi-layered shadows for a "premium" depth effect.
-- **Dynamic Background (OnboardingMosaic)**:
+  - **Primary**: Pill-shaped (`borderRadius: 30`), Black (`#000000`) background, White text.
+  - **Secondary**: Pill-shaped, White (`#FFFFFF`) background, Dark border (`#EAEAEA`), Black text.
+  - **Camera Area**: Dynamically responsive layout (`flex: 1`, `height: '100%'`), `24px` radius, `marginHorizontal: 21`, enclosed with a subtle `1px` border (`rgba(0,0,0,0.1)`). Does not use a locked aspect ratio to maximize screen real estate.
+  - **Camera Controls Bar**: Bottom layout uses a Light Grey Pill (`#EAEAEA`, `borderRadius: 50`) aligned compactly to the bottom.
+  - **Camera Icons**: Exclusively uses custom PNG assets (`GalleryIcon.png`, `CaptureIcon.png`, `CameraIcon.png`) integrated via `<Image>` components instead of vector fonts.
+- **Backgrounds**:
+  - **OnboardingMosaic**:
   - **Marquee Effect**: Rows of images move in a slow-motion horizontal loop.
   - **Directions**: Row 1 (Left), Row 2 (Right), Row 3 (Left).
   - **Technology**: Built with `react-native-reanimated` using infinite linear animations (`withRepeat`).
@@ -77,7 +81,22 @@ The application has been **globalized** to use **Albert Sans** exclusively.
 
 ## 📝 Changelog & Achievement Log
 
+#### [2026-04-12] - Custom Media Assets & Fluid Views
+- **Fluid Camera Architecture**: Shifted the fixed `399x536` layout to a dynamic `flex: 1` approach to maximize viewport usage consistently across devices while retaining exact lateral padding.
+- **Icon Hotswap**: Entirely replaced legacy `<Ionicons>` vectors with bespoke `.png` `<Image>` icon instances (`GalleryIcon`, `CaptureIcon`, `CameraIcon`) native to the `assets/camera` path to securely mirror Figma assets.
+
+#### [2026-04-12] - Exact Layout Adherence & Dimensions
+- **Profile Camera Pixel-Match**: Strict integration of Figma screenshot proportions (`399x536` center preview, `21px` margins, `24px` radius). Reverted the `ProfilePictureScreen` UI back to the official "Grey Pill" (`#EAEAEA`) style for controls.
+
+#### [2026-04-12] - Dev Environment Troubleshooting
+- **Path Resolution Protocol**: Enforced strict validation of relative paths for local assets. A `500 Internal Server Error` Metro Bundler crash identified that `src/screens/onboarding/` files must traverse down exactly 3 levels (`../../../assets/camera/`) to successfully resolve image modules.
+- **Deprecation Cleanups**:
+  - **`tintColor`**: Migrated from `style` object to direct prop for `<Image />` components to resolve React Native core warnings.
+  - **`pointerEvents`**: Migrated from property prop to `style` object property (`style={{ pointerEvents: 'none' }}`) for legacy views during refactoring.
+  - **Missing Imports**: Resolved `ReferenceError` for `Ionicons` in `ProfilePictureScreen` after global asset cleanup; restored for camera placeholder stability.
+
 #### [2026-04-11] - Robustness & Architecture Refinement
+- **Pixel-Perfect Profile Camera Refactoring**: Replicated the initially inferred `Capture image.png` Figma layout.
 - **Layered UI fix**: Resolved "unclickable" inputs by moving `OnboardingMosaic` to a background layer (`zIndex: -1`) and refactoring and onboarding screens to use a `ScrollView` inside a `KeyboardAvoidingView`.
 - **Keyboard Awareness**: Integrated `KeyboardAvoidingView` into `SignInScreen` and `OTPScreen` for seamless entry.
 - **Agreement Feedback Loop**: Fixed button logic to remain enabled for feedback alerts.

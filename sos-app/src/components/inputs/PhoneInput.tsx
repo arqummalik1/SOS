@@ -274,19 +274,20 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     height: 56,
     justifyContent: 'center',
-    paddingHorizontal: 0, // Moved to TextInput for better hit-testing
+    paddingHorizontal: 0,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: 'transparent', // Default state
   },
   inputFocused: {
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: '#E8E8E8', // Subtle border on focus
+    backgroundColor: '#FAFAFA',
   },
   inputError: {
-    borderWidth: 1,
     borderColor: colors.ui.error,
   },
   input: {
@@ -298,7 +299,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
     letterSpacing: 2.5,
-    outlineWidth: 0,
+    borderRadius: 28,
+    // Web-specific: remove blue outline
+    // @ts-ignore - web only property
+    outlineStyle: 'none',
   },
   modalOverlay: {
     flex: 1,
