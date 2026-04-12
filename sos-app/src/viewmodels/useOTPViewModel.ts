@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../store/AuthContext';
 
 export const useOTPViewModel = () => {
@@ -7,6 +7,38 @@ export const useOTPViewModel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState(30);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startTimer = useCallback(() => {
+    // Clear any existing interval before starting a new one
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    setResendTimer(30);
+    
+    intervalRef.current = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Auto-start timer on mount
+  useEffect(() => {
+    startTimer();
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [startTimer]);
 
   const isComplete = otp.every((digit) => digit !== '');
 
@@ -43,18 +75,9 @@ export const useOTPViewModel = () => {
   }, [otp, isComplete, verifyOTP]);
 
   const handleResend = useCallback(() => {
-    setResendTimer(30);
-    // Mock resend
-    const interval = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, []);
+    // Logic for actual resend would go here
+    startTimer(); // Restart the countdown timer
+  }, [startTimer]);
 
   return {
     otp,

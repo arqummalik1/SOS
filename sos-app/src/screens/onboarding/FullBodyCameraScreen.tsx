@@ -10,26 +10,31 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { useIsFocused } from '@react-navigation/native';
 import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
 
-interface ProfilePictureScreenProps {
-  navigation: NativeStackNavigationProp<any>;
+interface FullBodyCameraScreenProps {
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'FullBodyCamera'>;
+  route: RouteProp<AuthStackParamList, 'FullBodyCamera'>;
 }
 
 /**
- * ProfilePictureScreen — Live camera with real front/back switching.
+ * FullBodyCameraScreen — Same layout as ProfilePictureScreen but with
+ * "Full body photo" heading. Reuses the exact same camera area, controls
+ * bar (Gallery / Shutter / Flip), and grid overlay.
  *
- * Controls (bottom pill bar):
- *   [Gallery]   [Shutter]   [Flip Camera]
- *
- * On capture → auto-navigates to ProfileSetup with the photo URI.
+ * On capture → auto-navigates to FullBodyPhotoPreview with the photo URI.
  */
-export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navigation }) => {
+export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navigation, route }) => {
   const isFocused = useIsFocused();
+  const profileImage = route.params?.profileImage;
+  const profileData = route.params?.profileData;
+
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
@@ -64,8 +69,11 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
       });
 
       if (photo?.uri) {
-        // Auto-navigate to the profile setup form with the captured image
-        navigation.navigate('ProfileSetup', { profileImage: photo.uri });
+        navigation.navigate('FullBodyPhotoPreview', {
+          fullBodyImage: photo.uri,
+          profileImage,
+          profileData,
+        });
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to capture image. Please try again.');
@@ -87,7 +95,11 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
     });
 
     if (!result.canceled && result.assets[0]) {
-      navigation.navigate('ProfileSetup', { profileImage: result.assets[0].uri });
+      navigation.navigate('FullBodyPhotoPreview', {
+        fullBodyImage: result.assets[0].uri,
+        profileImage,
+        profileData,
+      });
     }
   };
 
@@ -96,7 +108,7 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
     setFacing((current) => (current === 'back' ? 'front' : 'back'));
   };
 
-  /* ── Permission states ── */
+  /* ── Permission: loading ── */
   if (!permission) {
     return (
       <View style={styles.permissionContainer}>
@@ -105,12 +117,13 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
     );
   }
 
+  /* ── Permission: not granted ── */
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionTitle}>Camera Access</Text>
         <Text style={styles.permissionText}>
-          We need camera access to capture your profile photo.
+          We need camera access to capture your full body photo.
         </Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
@@ -131,12 +144,12 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header — "Full body photo" instead of "Profile picture" */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile picture</Text>
+        <Text style={styles.headerTitle}>Full body photo</Text>
       </View>
 
-      <Text style={styles.subtitle}>Capture your profile image on a plain background</Text>
+      <Text style={styles.subtitle}>Capture your full body image on a plain background</Text>
 
       {/* Camera Preview */}
       <View style={styles.previewContainer}>
@@ -152,7 +165,7 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
         </View>
       </View>
 
-      {/* Bottom Controls */}
+      {/* Bottom Controls — identical to ProfilePictureScreen */}
       <View style={styles.controlsContainer}>
         <View style={styles.controlsBar}>
           {/* Gallery */}

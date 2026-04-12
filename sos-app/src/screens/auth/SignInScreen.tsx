@@ -48,7 +48,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       
       {/* Background Layer */}
-      <View style={[styles.backgroundLayer, { pointerEvents: 'none' }]}>
+      <View style={styles.backgroundLayer} pointerEvents="none">
         <OnboardingMosaic />
       </View>
 
@@ -113,14 +113,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F7F7', // Match mosaic background
   },
   keyboardAvoid: {
     flex: 1,
   },
   backgroundLayer: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: -1,
   },
   scrollContent: {
     flexGrow: 1,

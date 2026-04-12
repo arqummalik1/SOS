@@ -81,6 +81,10 @@ The application has been **globalized** to use **Albert Sans** exclusively.
 
 ## 📝 Changelog & Achievement Log
 
+#### [2026-04-12] - Profile Setup Architecture Overhaul
+- **Layout Alignment**: Completely replaced the generic form layout in `ProfileSetupScreen` with the standard Onboarding `<OnboardingMosaic>` & `bottomCard` architecture.
+- **Action Hierarchy**: Replicated exact UI buttons: "Live capture" (Primary Black), "Upload image" (Secondary White with outline), and "Skip for now" (underlined link), mirroring the `ProfileSetup.png` Figma asset exactly.
+
 #### [2026-04-12] - Custom Media Assets & Fluid Views
 - **Fluid Camera Architecture**: Shifted the fixed `399x536` layout to a dynamic `flex: 1` approach to maximize viewport usage consistently across devices while retaining exact lateral padding.
 - **Icon Hotswap**: Entirely replaced legacy `<Ionicons>` vectors with bespoke `.png` `<Image>` icon instances (`GalleryIcon`, `CaptureIcon`, `CameraIcon`) native to the `assets/camera` path to securely mirror Figma assets.
@@ -90,27 +94,91 @@ The application has been **globalized** to use **Albert Sans** exclusively.
 
 #### [2026-04-12] - Dev Environment Troubleshooting
 - **Path Resolution Protocol**: Enforced strict validation of relative paths for local assets. A `500 Internal Server Error` Metro Bundler crash identified that `src/screens/onboarding/` files must traverse down exactly 3 levels (`../../../assets/camera/`) to successfully resolve image modules.
+- **Component Resolution Mapping**: Encountered another isolated `500 Server Error` on `ProfileSetupScreen`. Remedied by correcting the internal component import path for `<OnboardingMosaic>` to `/components/layout/` instead of `/components/visuals/`. 
 - **Deprecation Cleanups**:
   - **`tintColor`**: Migrated from `style` object to direct prop for `<Image />` components to resolve React Native core warnings.
   - **`pointerEvents`**: Migrated from property prop to `style` object property (`style={{ pointerEvents: 'none' }}`) for legacy views during refactoring.
-  - **Missing Imports**: Resolved `ReferenceError` for `Ionicons` in `ProfilePictureScreen` after global asset cleanup; restored for camera placeholder stability.
 
-#### [2026-04-11] - Robustness & Architecture Refinement
-- **Pixel-Perfect Profile Camera Refactoring**: Replicated the initially inferred `Capture image.png` Figma layout.
-- **Layered UI fix**: Resolved "unclickable" inputs by moving `OnboardingMosaic` to a background layer (`zIndex: -1`) and refactoring and onboarding screens to use a `ScrollView` inside a `KeyboardAvoidingView`.
-- **Keyboard Awareness**: Integrated `KeyboardAvoidingView` into `SignInScreen` and `OTPScreen` for seamless entry.
-- **Agreement Feedback Loop**: Fixed button logic to remain enabled for feedback alerts.
-- **OTP Responsive Fix**: Switched `OTPInput` boxes to `flex` scaling.
+#### [2026-04-12] - Onboarding UX & Rendering Refinement
+- **Functional OTP Resend Timer**: Implemented a 30-second backward countdown timer in the OTP screen.
+  - **Auto-start**: Initiates immediately on screen focus.
+  - **Logic**: Prevents "Resend code" interaction until the timer reaches zero.
+  - **Memory Safety**: Integrated `useRef` and `useEffect` cleanup to manage intervals across component lifecycles.
+- **Profile Setup Hub Integration**: 
+  - Created `ProfileSetupHubScreen.tsx` (Selection gateway for Camera/Upload/Skip).
+  - **Figma-Exact Layout**: Title → Subtitle ("This information helps us deliver…") → Section label ("Upload your photo", centered) → White pill ("Live Capture", shadow-only, no border) → Black pill ("Upload Image") → "Skip for now" underlined link.
+  - **Button Tokens**: Width `75%` (centered), height `54px`, `borderRadius: 16`. White button uses subtle shadow (`shadowOpacity: 0.08`, `elevation: 3`) instead of border. Black button uses standard dark shadow (`shadowOpacity: 0.12`, `elevation: 4`).
+- **Restored "Profile setup 1.png" Design**:
+  - Restored the detailed input form (Name, DOB, Weight, Height) in `ProfileSetupScreen.tsx`.
+  - Integrated it with the camera capture flow; it successfully displays the captured photo URI in the profile preview circle.
+- **Real-Device Rendering Optimizations**:
+  - Resolved "Invisible Marquee" issue on real device renderers.
+  - **Standardized Pattern**: Removed `zIndex: -1` from background layers. Set parent container backgrounds to `#F7F7F7` (matching mosaic background) or `transparent` to ensure the layer renders correctly behind content.
+- **Path Resolution Protocol**: 
+  - Enforced strict validation of relative paths for local assets. A `500 Internal Server Error` Metro Bundler crash identified that `src/screens/onboarding/` files must traverse down exactly 3 levels (`../../../assets/camera/`) to successfully resolve image modules.
+- **Profile Setup Form Functionality**:
+  - Rewrote `ProfileSetupScreen.tsx` to be fully interactive.
+  - **Dropdown Pattern**: Implemented `DropdownModal` using a standard bottom-sheet pattern (sliding modal + `FlatList`).
+  - **Ranges**: Height (100-300cm), Weight (30-200kg), Day (1-31), Month (Jan-Dec), Year (1949-2024).
+  - **TextInput Sanitation**: Explicitly removed default borders/outlines on `TextInput` (`outlineStyle: 'none'`, `underlineColorAndroid: 'transparent'`) to maintain the clean pill look even under focus.
+  - **Shadow UI Alignment**: Maintained "top shadows" (`shadowOffset: { height: -2 }`) on all input pills and dropdown triggers.
+  - **Next Button Geometry**: Updated `borderRadius` to `15` for the "Next" button on the `ProfileSetupScreen` as per latest brand adjustment.
+- **Camera Focus Management**: 
+  - Integrated `useIsFocused` from `@react-navigation/native` to ensure the camera hardware is gracefully released when the user navigates away. 
+  - **Rule**: Always wrap `CameraView` with an `isFocused` check to prevent background battery/resource drain.
+- **Full Body Photo Sub-Flow (Profile Setup 1.1 → 1.2 → 2.0)**:
+  - **Corrected Navigation Chain**: `ProfileSetup` → (Next) → `FullBodyPhoto` (1.1) → (Live Capture) → `FullBodyCamera` → (capture) → `FullBodyPhotoPreview` (1.2) → (Look's Good) → `BodyMeasurements` (2.0) → (Continue) → `StylePreferences`.
+  - **Data Flow**: Name, height, weight, dob, profileImage, fullBodyImage, and bodyshape are accumulated and forwarded through the navigation chain.
+  - **FullBodyPhotoScreen (1.1)**: Blurred profile image background + bottom white card. Buttons for Live Capture (white, shadow-only) and Upload Image (black).
+  - **FullBodyCameraScreen**: Exact clone of `ProfilePictureScreen` with heading "Full body photo".
+  - **FullBodyPhotoPreviewScreen (1.2)**: 3-segment progress indicator (1st active). Tall portrait photo preview with dynamic dimensions calculated via `useWindowDimensions` (width - 40, 10% height reduction from Figma ratio).
+  - **BodyMeasurementsScreen (2.0)**: 3-segment progress indicator (2nd active/black). 2-column grid selection cards using **official silhouettes**. Selection is handled professionally via **elevation and subtle background tint** instead of a black border. Each card, the custom input bar, and the **Square Back Button** all feature a **top-oriented shadow** (`shadowOffset: { height: -4 }`) for a consistent depth aesthetic. Footer contains a Square Back Button + Black Continue button (borderRadius: 15, width: flex-1).
+  - **SkinTonePreferences (Upcoming)**: 3-segment progress indicator (3rd active).
+
+### 📐 Complete Navigation Flow
+```
+First → Welcome → SignIn → OTP → ProfileSetupHub → ProfilePicture (Camera)
+  → ProfileSetup (Form: Name, Height, Weight, DOB)
+  → FullBodyPhoto (1.1 — Blurred card overlay)
+  → FullBodyCamera (Same as ProfilePicture, heading: "Full body photo")
+  → FullBodyPhotoPreview (1.2 — Preview + "Look's Good")
+  → BodyMeasurements (2.0 — Bodyshape selection + Custom input)
+  → StylePreferences → BodyMeasurements (Final Stats/Summary)
+```
 
 ---
 
 ## 🤖 Instructions for AI Assistants (Windsurf, Cursor, Claude)
-When working on this project, you **MUST**:
-1.  **Read this file (`memory.md`) first**. It contains the latest design tokens and architectural decisions.
-2.  **Avoid hardcoding**. Use the theme files in `src/theme/`.
-3.  **Update this file** after implementing any new feature, changing typography/theme, or adding a screen.
-4.  **Preserve the MVVM structure**. Keep business logic in ViewModels.
-5.  **Aim for Perfection**. If the design requires a specific shadow or radius, implement it exactly as per the Figma PNGs in `SOS-FigmaDesigns/`.
+
+### 🧱 CORE PRINCIPLE & RULES
+You are a senior software architect. You **MUST** adhere to these rules without exception:
+1.  **MVVM Architecture**: UI layer (Screens) → Logic layer (ViewModels) → Data layer (Models/Services). **NO** business logic in UI files.
+2.  **Strict Repository Pattern**: Direct API calls from components are forbidden. Use Services for external connectivity.
+3.  **No Placeholders**: Use `generate_image` for realistic demos. Never keep dummy text like "Lorem Ipsum".
+4.  **Pixel-Perfect Figma Adherence**: If a Figma PNG exists in `SOS-FigmaDesigns/`, the code **MUST** match it exactly in dimensions, colors, and shadows.
+5.  **Dynamic Responsiveness**: No hardcoded widths/heights unless absolute constants (like icons). Use percentages or flex for layout containers.
+6.  **Centralised Constants**: Use `src/theme/` and `src/constants/`. **NO** magic strings.
+
+### 🏗️ Technical Context & Gotchas
+1.  **Background Layering**: When using `<OnboardingMosaic />`, **NEVER** use `zIndex: -1` on the parent view if the top-level container has a background color. This hides the mosaic on real devices.
+2.  **Image Tinting**: Use the `tintColor` prop directly on the `<Image />` component, **NOT** within the `style` object.
+3.  **Input Border Removal**: To achieve the clean pill design, always set `borderWidth: 0` and `outlineStyle: 'none'` (for web) on `TextInput` to prevent default focus rectangles.
+4.  **Path Resolution**: `src/screens/onboarding/` files must traverse down exactly 3 levels (`../../../assets/`) to resolve local image modules.
+5.  **Typography**: Use **Albert Sans** exclusively via `src/theme/fonts.ts`. Never hardcode `fontFamily`.
+6.  **Camera Management**: Always wrap `CameraView` with `isFocused` check (`useIsFocused` from `@react-navigation/native`) to prevent background battery drain.
+7.  **Button Design Tokens**: White pill = shadow-only, no border, `borderRadius: 15`. Black pill = `#0A0A0A`, `borderRadius: 15`. Width: `75%` unless full-width is required in a row.
+6.  **Camera Management**: Always wrap `CameraView` with `isFocused` check (`useIsFocused` from `@react-navigation/native`) to prevent background battery drain.
+7.  **Button Design Tokens**: White pill = shadow-only, no border, `borderRadius: 15`. Black pill = `#0A0A0A`, `borderRadius: 15`. Width: `75%` unless full-width is required.
+
+### 📐 Complete Navigation Flow
+```
+First → Welcome → SignIn → OTP → ProfileSetupHub → ProfilePicture (Camera)
+  → ProfileSetup (Form: Name, Height, Weight, DOB)
+  → FullBodyPhoto (1.1 — Blurred card overlay)
+  → FullBodyCamera (Same as ProfilePicture, heading: "Full body photo")
+  → FullBodyPhotoPreview (1.2 — Preview + "Look's Good")
+  → StylePreferences → BodyMeasurements
+```
 
 ---
-*Last Updated: 2026-04-11 19:50:48*
+*Last Updated: 2026-04-12 18:30:00*

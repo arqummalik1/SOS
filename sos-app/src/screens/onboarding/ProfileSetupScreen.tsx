@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,153 +10,385 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
-import { typography } from '../../theme/typography';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 const { width } = Dimensions.get('window');
+const IMAGE_WIDTH = width - 48;
+const IMAGE_HEIGHT = IMAGE_WIDTH * 1.1;
+
+// ────────────────────────────────────────────────────────
+// Data generators — no magic strings, centralised ranges
+// ────────────────────────────────────────────────────────
+const HEIGHTS = Array.from({ length: 201 }, (_, i) => `${100 + i}cm`);   // 100cm → 300cm
+const WEIGHTS = Array.from({ length: 171 }, (_, i) => `${30 + i}kg`);    // 30kg  → 200kg
+const DAYS    = Array.from({ length: 31 },  (_, i) => `${i + 1}`);       // 1 → 31
+const MONTHS  = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const YEARS   = Array.from({ length: 76 },  (_, i) => `${2024 - i}`);    // 2024 → 1949
 
 interface ProfileSetupScreenProps {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'ProfileSetup'>;
+  route: RouteProp<AuthStackParamList, 'ProfileSetup'>;
 }
 
 /**
- * ProfileSetupScreen - Replicates "Profile setup 1.png" with 100% visual fidelity.
- * Features Kyiv Sans typography, custom form fields, and a branded progress bar.
+ * Reusable bottom-sheet dropdown modal.
+ * Renders a scrollable list of string options.
  */
-export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigation }) => {
-  const [name, setName] = useState('Jane Doe');
+interface DropdownModalProps {
+  visible: boolean;
+  title: string;
+  data: string[];
+  selected: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}
+
+const DropdownModal: React.FC<DropdownModalProps> = ({
+  visible, title, data, selected, onSelect, onClose,
+}) => (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <TouchableOpacity style={modalStyles.overlay} activeOpacity={1} onPress={onClose}>
+      <View style={modalStyles.sheet}>
+        {/* Handle bar */}
+        <View style={modalStyles.handleBar} />
+
+        <Text style={modalStyles.sheetTitle}>{title}</Text>
+
+        <FlatList
+          data={data}
+          keyExtractor={(item) => item}
+          showsVerticalScrollIndicator={false}
+          style={modalStyles.list}
+          initialScrollIndex={Math.max(0, data.indexOf(selected))}
+          getItemLayout={(_, index) => ({ length: 52, offset: 52 * index, index })}
+          renderItem={({ item }) => {
+            const isSelected = item === selected;
+            return (
+              <TouchableOpacity
+                style={[modalStyles.option, isSelected && modalStyles.optionSelected]}
+                onPress={() => { onSelect(item); onClose(); }}
+                activeOpacity={0.7}
+              >
+                <Text style={[modalStyles.optionText, isSelected && modalStyles.optionTextSelected]}>
+                  {item}
+                </Text>
+                {isSelected && <Ionicons name="checkmark" size={20} color="#000" />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </TouchableOpacity>
+  </Modal>
+);
+
+// ────────────────────────────────────────────────────────
+// Main screen
+// ────────────────────────────────────────────────────────
+export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigation, route }) => {
+  const profileImage = route.params?.profileImage;
+
+  // Form state
+  const [name, setName]       = useState('');
+  const [height, setHeight]   = useState('160cm');
+  const [weight, setWeight]   = useState('60kg');
+  const [day, setDay]         = useState('28');
+  const [month, setMonth]     = useState('February');
+  const [year, setYear]       = useState('2002');
+
+  // Modal state
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  const openDropdown  = useCallback((key: string) => setActiveDropdown(key), []);
+  const closeDropdown = useCallback(() => setActiveDropdown(null), []);
+
+  const handleNext = () => {
+    navigation.navigate('FullBodyPhoto', {
+      profileImage,
+      profileData: { name, height, weight, dob: `${day} ${month} ${year}` },
+    });
+  };
 
   return (
     <SafeContainer style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
       >
-        {/* Progress Bar (3 segments, 1st active) */}
+        {/* ── Progress Bar ── */}
         <View style={styles.progressContainer}>
           <View style={[styles.progressSegment, styles.segmentActive]} />
           <View style={[styles.progressSegment, styles.segmentInactive]} />
           <View style={[styles.progressSegment, styles.segmentInactive]} />
+          <View style={[styles.progressSegment, styles.segmentInactive]} />
         </View>
 
-        {/* Title Section */}
+        {/* ── Header ── */}
         <View style={styles.headerSection}>
           <Text style={styles.title}>Profile setup</Text>
           <Text style={styles.subtitle}>
-            This information helps us deliver a better, more personalized experience for you.
+            This information helps us deliver a better,{'\n'}more personalized experience for you.
           </Text>
         </View>
 
-        {/* Profile Image Section */}
+        {/* ── Profile Image ── */}
         <View style={styles.photoSection}>
           <View style={styles.photoWrapper}>
-            <Image 
-              source={require('../../../assets/images/mosaic/fashion1.jpg')} // Using as placeholder
+            <Image
+              source={
+                profileImage
+                  ? { uri: profileImage }
+                  : require('../../../assets/images/mosaic/fashion1.jpg')
+              }
               style={styles.profileImage}
               resizeMode="cover"
             />
-            <TouchableOpacity style={styles.editIconBadge} activeOpacity={0.8}>
-              <View style={styles.editIconCircle}>
-                <Ionicons name="pencil" size={16} color="#000000" />
+            <TouchableOpacity
+              style={styles.editBadge}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ProfilePicture')}
+            >
+              <View style={styles.editBadgeCircle}>
+                <Ionicons name="pencil-outline" size={16} color="#000000" />
               </View>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Form Fields */}
+        {/* ── Form Fields ── */}
         <View style={styles.formSection}>
-          {/* Your Name */}
+
+          {/* ─ Name ─ */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Your name:</Text>
             <View style={styles.inputWrapper}>
-              <TextInput 
+              <TextInput
                 style={styles.textInput}
                 value={name}
                 onChangeText={setName}
-                placeholder="Enter your name"
+                placeholder="Jane Doe"
                 placeholderTextColor="#999999"
+                autoCorrect={false}
+                autoCapitalize="words"
+                // Remove the default TextInput outline on web/iOS
+                underlineColorAndroid="transparent"
               />
             </View>
           </View>
 
-          {/* Height & Weight Row */}
+          {/* ─ Height & Weight ─ */}
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Height:</Text>
-              <TouchableOpacity style={styles.dropdownTrigger}>
-                <Text style={styles.dropdownText}>160cm</Text>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => openDropdown('height')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownText}>{height}</Text>
                 <Ionicons name="chevron-down" size={18} color="#000000" />
               </TouchableOpacity>
             </View>
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 16 }]}>
+            <View style={{ width: 16 }} />
+            <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Weight:</Text>
-              <TouchableOpacity style={styles.dropdownTrigger}>
-                <Text style={styles.dropdownText}>60kg</Text>
+              <TouchableOpacity
+                style={styles.dropdownTrigger}
+                onPress={() => openDropdown('weight')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownText}>{weight}</Text>
                 <Ionicons name="chevron-down" size={18} color="#000000" />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Date of Birth */}
+          {/* ─ Date of Birth ─ */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Date of Birth:</Text>
             <View style={styles.dobRow}>
-              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegment]}>
-                <Text style={styles.dropdownText}>28</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, styles.dobSegment]}
+                onPress={() => openDropdown('day')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownText}>{day}</Text>
                 <Ionicons name="chevron-down" size={16} color="#000000" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegmentMedium]}>
-                <Text style={styles.dropdownText}>February</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, styles.dobSegmentMedium]}
+                onPress={() => openDropdown('month')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownText}>{month}</Text>
                 <Ionicons name="chevron-down" size={16} color="#000000" />
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.dropdownTrigger, styles.dobSegment]}>
-                <Text style={styles.dropdownText}>2002</Text>
+              <TouchableOpacity
+                style={[styles.dropdownTrigger, styles.dobSegment]}
+                onPress={() => openDropdown('year')}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.dropdownText}>{year}</Text>
                 <Ionicons name="chevron-down" size={16} color="#000000" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Next Button */}
+        {/* ── Next Button ── */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.nextButton}
-            onPress={() => navigation.navigate('FullBodyPhoto')}
+            onPress={handleNext}
             activeOpacity={0.9}
           >
             <Text style={styles.buttonText}>Next</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ── Dropdown Modals ── */}
+      <DropdownModal
+        visible={activeDropdown === 'height'}
+        title="Select Height"
+        data={HEIGHTS}
+        selected={height}
+        onSelect={setHeight}
+        onClose={closeDropdown}
+      />
+      <DropdownModal
+        visible={activeDropdown === 'weight'}
+        title="Select Weight"
+        data={WEIGHTS}
+        selected={weight}
+        onSelect={setWeight}
+        onClose={closeDropdown}
+      />
+      <DropdownModal
+        visible={activeDropdown === 'day'}
+        title="Select Day"
+        data={DAYS}
+        selected={day}
+        onSelect={setDay}
+        onClose={closeDropdown}
+      />
+      <DropdownModal
+        visible={activeDropdown === 'month'}
+        title="Select Month"
+        data={MONTHS}
+        selected={month}
+        onSelect={setMonth}
+        onClose={closeDropdown}
+      />
+      <DropdownModal
+        visible={activeDropdown === 'year'}
+        title="Select Year"
+        data={YEARS}
+        selected={year}
+        onSelect={setYear}
+        onClose={closeDropdown}
+      />
     </SafeContainer>
   );
 };
 
+// ────────────────────────────────────────────────────────
+// Dropdown Modal styles
+// ────────────────────────────────────────────────────────
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '50%',
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  handleBar: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#D0D0D0',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontFamily: fontNames.bold,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  list: {
+    paddingHorizontal: 20,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 52,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+  },
+  optionSelected: {
+    backgroundColor: '#F5F5F5',
+  },
+  optionText: {
+    fontFamily: fontNames.regular,
+    fontSize: 16,
+    color: '#333333',
+  },
+  optionTextSelected: {
+    fontFamily: fontNames.medium,
+    fontWeight: '600',
+    color: '#000000',
+  },
+});
+
+// ────────────────────────────────────────────────────────
+// Screen styles
+// ────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
+
+  /* ── Progress bar ── */
   progressContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     gap: 8,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   progressSegment: {
-    width: (width - 48 - 24) / 4,
-    height: 12,
-    borderRadius: 6,
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
   },
   segmentActive: {
     backgroundColor: '#000000',
@@ -164,84 +396,103 @@ const styles = StyleSheet.create({
   segmentInactive: {
     backgroundColor: '#E5E5EA',
   },
+
+  /* ── Header ── */
   headerSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
-    ...typography.title1,
+    fontFamily: fontNames.bold,
+    fontSize: 28,
+    fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    ...typography.subheadline,
-    color: '#333333',
-    lineHeight: 20,
+    fontFamily: fontNames.regular,
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#666666',
     textAlign: 'center',
-    paddingHorizontal: 20,
   },
+
+  /* ── Photo section ── */
   photoSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
   photoWrapper: {
-    borderRadius: 28,
-    overflow: 'visible', // For overlapping edit icon
+    width: IMAGE_WIDTH,
+    height: IMAGE_HEIGHT,
+    borderRadius: 24,
+    overflow: 'visible',
   },
   profileImage: {
-    width: width * 0.72,
-    height: width * 0.72,
-    borderRadius: 28,
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
+    backgroundColor: '#F2F2F7',
   },
-  editIconBadge: {
+  editBadge: {
     position: 'absolute',
-    bottom: -8,
-    right: -8,
+    bottom: 8,
+    right: 8,
   },
-  editIconCircle: {
+  editBadgeCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    // Shadow
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     elevation: 4,
   },
+
+  /* ── Form ── */
   formSection: {
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
-    ...typography.headline,
+    fontFamily: fontNames.bold,
+    fontSize: 15,
+    fontWeight: '700',
     color: '#000000',
     marginBottom: 8,
   },
   inputWrapper: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F2F2F7',
-    borderRadius: 24,
-    height: 56,
+    borderRadius: 28,
+    height: 52,
     justifyContent: 'center',
     paddingHorizontal: 20,
-    // Subtle inner shadow effect matching design
+    // Remove any default border — clean pill look
+    borderWidth: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   textInput: {
-    ...typography.callout,
+    fontFamily: fontNames.regular,
+    fontSize: 15,
     color: '#000000',
-  },
+    flex: 1,
+    height: '100%',
+    // Kill the default TextInput border/outline
+    borderWidth: 0,
+    outlineStyle: 'none', // Web
+    padding: 0,
+  } as any,
   row: {
     flexDirection: 'row',
     width: '100%',
@@ -251,19 +502,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#F2F2F7',
-    borderRadius: 24,
-    height: 56,
+    borderRadius: 28,
+    height: 52,
     paddingHorizontal: 20,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   dropdownText: {
-    ...typography.callout,
+    fontFamily: fontNames.regular,
+    fontSize: 15,
     color: '#000000',
   },
   dobRow: {
@@ -276,25 +526,29 @@ const styles = StyleSheet.create({
   dobSegmentMedium: {
     flex: 1.5,
   },
+
+  /* ── Next button ── */
   buttonContainer: {
-    marginTop: 16,
+    marginTop: 12,
+    alignItems: 'center',
   },
   nextButton: {
-    backgroundColor: '#111111',
-    width: '100%',
-    height: 60,
-    borderRadius: 16,
+    backgroundColor: '#0A0A0A',
+    width: '75%',
+    height: 58,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
-    // Shadow
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
   },
   buttonText: {
-    ...typography.headline,
+    fontFamily: fontNames.medium,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });
