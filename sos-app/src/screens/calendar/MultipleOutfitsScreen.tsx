@@ -1,70 +1,53 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
+  Animated,
   Image,
   SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontNames } from '../../theme';
+import { CalendarStackParamList } from '../../navigation/CalendarStackNavigator';
 import { typography } from '../../theme/typography';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const CAROUSEL_ITEMS = [
-  { id: '1', image: require('../../../assets/MultipleOutfits/Image1.png') },
-  { id: '2', image: require('../../../assets/MultipleOutfits/Image2.png') },
-  { id: '3', image: require('../../../assets/MultipleOutfits/Image3.png') },
-];
-
-const ITEM_WIDTH = SCREEN_WIDTH * 0.85;
-const ITEM_HEIGHT = 520;
-const ITEM_SPACING = 20;
-
 type MultipleOutfitsScreenProps = {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<CalendarStackParamList, 'MultipleOutfits'>;
 };
 
-export const FirstScreen: React.FC<MultipleOutfitsScreenProps> = ({ navigation }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
+const CAROUSEL_ITEMS = [
+  { id: '1', image: require('../../../SOS-FigmaDesigns/MultipleOutfits/image.png') },
+  { id: '2', image: require('../../../SOS-FigmaDesigns/MultipleOutfits/image1.png') },
+  { id: '3', image: require('../../../SOS-FigmaDesigns/MultipleOutfits/Image2.png') },
+];
 
-  const onSelectThis = (index: number) => {
-    navigation.navigate('VirtualTryOnSecond');
-  };
+const CARD_RATIO = 473 / 315;
+const LENGTH_SCALE = 1.2;
 
-  const renderItem = ({ item, index }: { item: typeof CAROUSEL_ITEMS[0]; index: number }) => {
-    return (
-      <View style={styles.card}>
-        <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
-        
-        <TouchableOpacity 
-          style={styles.glassButton}
-          onPress={() => onSelectThis(index)}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.glassButtonText}>Select this</Text>
-          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    );
-  };
+export const MultipleOutfitsScreen: React.FC<MultipleOutfitsScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-  const onScroll = (event: any) => {
-    const contentOffsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffsetX / (ITEM_WIDTH + ITEM_SPACING));
-    setActiveIndex(index);
+  const cardWidth = Math.max(280, Math.min(315, width * 0.8));
+  const cardHeight = cardWidth * CARD_RATIO * LENGTH_SCALE;
+  const itemGap = 12;
+  const snapInterval = cardWidth + itemGap;
+  const horizontalInset = Math.max(0, (width - snapInterval) / 2);
+
+  const onSelectThis = (itemId: string) => {
+    navigation.navigate('VirtualTryOnSecond', {
+      selectedOutfitId: itemId,
+    });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.gray[100]} />
+      <StatusBar barStyle="dark-content" backgroundColor="#F3F3F3" />
 
       <View style={styles.content}>
         <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()} activeOpacity={0.7}>
@@ -72,133 +55,143 @@ export const FirstScreen: React.FC<MultipleOutfitsScreenProps> = ({ navigation }
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.heading}>Select Your Look</Text>
+        <Text style={styles.heading}>Your outfits are ready</Text>
 
-        <View style={styles.carouselContainer}>
-          <FlatList
+        <View style={[styles.carouselContainer, { height: cardHeight + 34 }]}>
+          <Animated.FlatList
             data={CAROUSEL_ITEMS}
-            renderItem={renderItem}
             keyExtractor={(item) => item.id}
             horizontal
+            bounces={false}
             showsHorizontalScrollIndicator={false}
-            snapToInterval={ITEM_WIDTH + ITEM_SPACING}
             decelerationRate="fast"
-            contentContainerStyle={styles.carouselContent}
-            onScroll={onScroll}
+            snapToInterval={snapInterval}
+            snapToAlignment="start"
+            disableIntervalMomentum
+            contentContainerStyle={{ paddingHorizontal: horizontalInset }}
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+              useNativeDriver: true,
+            })}
             scrollEventThrottle={16}
-            ItemSeparatorComponent={() => <View style={{ width: ITEM_SPACING }} />}
-          />
-        </View>
+            renderItem={({ item, index }) => {
+              const inputRange = [
+                (index - 1) * snapInterval,
+                index * snapInterval,
+                (index + 1) * snapInterval,
+              ];
 
-        <View style={styles.pagination}>
-          {CAROUSEL_ITEMS.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.paginationDot,
-                index === activeIndex ? styles.activeDot : styles.inactiveDot,
-              ]}
-            />
-          ))}
+              const scale = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.83, 1, 0.83],
+                extrapolate: 'clamp',
+              });
+
+              const opacity = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.7, 1, 0.7],
+                extrapolate: 'clamp',
+              });
+
+              return (
+                <Animated.View
+                  style={[
+                    styles.cardSlot,
+                    {
+                      width: snapInterval,
+                      height: cardHeight,
+                      opacity,
+                      transform: [{ scale }],
+                    },
+                  ]}
+                >
+                  <View style={[styles.cardWrap, { width: cardWidth, height: cardHeight }]}>
+                    <Image source={item.image} style={styles.cardImage} resizeMode="cover" />
+                    <TouchableOpacity style={styles.glassButton} onPress={() => onSelectThis(item.id)} activeOpacity={0.9}>
+                      <BlurView intensity={35} tint="dark" style={styles.glassInner}>
+                        <Text style={styles.glassButtonText}>Select this</Text>
+                        <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                      </BlurView>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              );
+            }}
+          />
         </View>
       </View>
     </SafeAreaView>
   );
 };
 
-export const MultipleOutfitsScreen = FirstScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[100],
+    backgroundColor: '#F3F3F3',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 0,
-    paddingTop: 8,
+    paddingTop: 42,
   },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    paddingVertical: 6,
-    marginLeft: 16,
+    paddingVertical: 8,
+    marginLeft: 18,
+    marginBottom: 6,
   },
   backText: {
-    marginLeft: 4,
-    ...typography.body,
+    ...typography.callout,
     color: '#1F1F1F',
   },
   heading: {
-    marginTop: 16,
     textAlign: 'center',
-    ...typography.largeTitle,
+    ...typography.title1,
     color: '#111111',
   },
   carouselContainer: {
-    marginTop: 32,
-    height: ITEM_HEIGHT + 40,
+    marginTop: 42,
   },
-  carouselContent: {
-    paddingHorizontal: (SCREEN_WIDTH - ITEM_WIDTH) / 2 - ITEM_SPACING / 2,
+  cardSlot: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  card: {
-    width: ITEM_WIDTH,
-    height: ITEM_HEIGHT,
-    borderRadius: 28,
+  cardWrap: {
+    borderRadius: 24,
     overflow: 'hidden',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    elevation: 4,
   },
   cardImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 28,
+    position: 'absolute',
+    width: '106%',
+    height: '106%',
+    left: '-3%',
+    top: '-3%',
   },
   glassButton: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 16,
     alignSelf: 'center',
-    width: 150,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  glassInner: {
+    minWidth: 158,
+    height: 36,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+    backgroundColor: 'rgba(128,128,128,0.25)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   glassButtonText: {
-    ...typography.subheadline,
+    ...typography.headline,
     color: '#FFFFFF',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 24,
-    gap: 6,
-  },
-  paginationDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  activeDot: {
-    backgroundColor: '#111111',
-    width: 20,
-    height: 6,
-    borderRadius: 3,
-  },
-  inactiveDot: {
-    backgroundColor: '#D9D9D9',
   },
 });

@@ -8,9 +8,16 @@ import { OutfitCompleteScreen } from '../screens/calendar/OutfitCompleteScreen';
 
 export type CalendarStackParamList = {
   OccasionSelection: undefined;
-  TravelPlanner: undefined;
+  TravelPlanner: {
+    selectedOccasion: string;
+    isCustomOccasion: boolean;
+  };
   MultipleOutfits: undefined;
-  VirtualTryOnSecond: undefined;
+  VirtualTryOnSecond:
+    | {
+        selectedOutfitId?: string;
+      }
+    | undefined;
   OutfitComplete: undefined;
 };
 

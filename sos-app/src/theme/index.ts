@@ -24,3 +24,5 @@ export {
   typography,
   type TypographyStyle,
 } from './typography';
+
+export { gradients } from './gradients';
