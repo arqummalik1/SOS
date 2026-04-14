@@ -9,6 +9,7 @@ import { OutfitDetailScreen } from '../screens/outfit/OutfitDetailScreen';
 import { WardrobeScreen } from '../screens/wardrobe/WardrobeScreen';
 import { StylistScreen } from '../screens/stylist/StylistScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { PaymentGatewayScreen } from '../screens/profile/PaymentGatewayScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -20,6 +21,7 @@ export type ProfileStackParamList = {
   Wardrobe: undefined;
   Stylist: undefined;
   Settings: undefined;
+  Subscription: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -30,6 +32,7 @@ export const ProfileStackNavigator: React.FC = () => {
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Subscription" component={PaymentGatewayScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

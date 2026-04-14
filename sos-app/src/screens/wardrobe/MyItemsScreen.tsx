@@ -14,6 +14,11 @@ import { typography } from '../../theme/typography';
 
 interface MyItemsScreenProps {
   navigation: NativeStackNavigationProp<any>;
+  route?: {
+    params?: {
+      selectionMode?: boolean;
+    };
+  };
 }
 
 type ItemCard = {
@@ -65,8 +70,18 @@ const ITEMS: ItemCard[] = [
   },
 ];
 
-export const MyItemsScreen: React.FC<MyItemsScreenProps> = ({ navigation }) => {
+export const MyItemsScreen: React.FC<MyItemsScreenProps> = ({ navigation, route }) => {
+  const selectionMode = route?.params?.selectionMode === true;
+
+  const onSelectItem = () => {
+    navigation.navigate('OutfitComplete');
+  };
+
   const onEditDetails = () => {
+    if (selectionMode) {
+      onSelectItem();
+      return;
+    }
     navigation.navigate('EditItemDetails');
   };
 
@@ -85,7 +100,9 @@ export const MyItemsScreen: React.FC<MyItemsScreenProps> = ({ navigation }) => {
 
       <View style={styles.titleWrap}>
         <Text style={styles.title}>My Items</Text>
-        <Text style={styles.subtitle}>Make your wardrobe even smarter!</Text>
+        <Text style={styles.subtitle}>
+          {selectionMode ? 'Select an item to complete your outfit' : 'Make your wardrobe even smarter!'}
+        </Text>
       </View>
 
       <ScrollView
@@ -94,7 +111,13 @@ export const MyItemsScreen: React.FC<MyItemsScreenProps> = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {ITEMS.map((item) => (
-          <View key={item.id} style={styles.card}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.card}
+            activeOpacity={selectionMode ? 0.9 : 1}
+            onPress={selectionMode ? onSelectItem : undefined}
+            disabled={!selectionMode}
+          >
             <View style={styles.imageColumn}>
               <Image source={item.image} style={styles.itemImage} resizeMode="contain" />
               {item.id === '4' ? (
@@ -134,10 +157,10 @@ export const MyItemsScreen: React.FC<MyItemsScreenProps> = ({ navigation }) => {
                 onPress={onEditDetails}
                 activeOpacity={0.85}
               >
-                <Text style={styles.editButtonText}>Edit details</Text>
+                <Text style={styles.editButtonText}>{selectionMode ? 'Select item' : 'Edit details'}</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <View style={styles.bottomGap} />

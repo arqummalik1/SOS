@@ -4,14 +4,15 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
-
-const { width, height } = Dimensions.get('window');
 
 interface OutfitCompleteScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -20,45 +21,60 @@ interface OutfitCompleteScreenProps {
 type FeedbackType = 'sad' | 'neutral' | 'happy' | null;
 
 export const OutfitCompleteScreen: React.FC<OutfitCompleteScreenProps> = ({ navigation }) => {
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackType>(null);
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackType>('happy');
+  const panelBottomInset = Math.max(64, tabBarHeight + 49);
 
   const handleGoToDashboard = () => {
+    const parentNav = navigation.getParent?.();
+    if (parentNav) {
+      parentNav.navigate('Home', { screen: 'Dashboard' });
+      return;
+    }
     navigation.navigate('Dashboard');
   };
 
   return (
     <View style={styles.container}>
-      {/* Top Section - White Background */}
-      <View style={styles.topSection}>
-        {/* Checkmark Icon with Sparkles */}
+      <View
+        style={[
+          styles.topSection,
+          {
+            paddingTop: Math.max(insets.top + height * 0.085, 80),
+            paddingBottom: 34,
+          },
+        ]}
+      >
         <View style={styles.iconContainer}>
-          {/* Left Sparkle */}
-          <View style={[styles.sparkle, styles.sparkleLeft]}>
-            <Ionicons name="star" size={16} color="#B8A0C0" />
+          <View style={[styles.sparkle, styles.sparkleLeft]} pointerEvents="none">
+            <Ionicons name="sparkles" size={14} color="#C2ABC9" />
           </View>
-          
-          {/* Checkmark Circle */}
+
           <View style={styles.checkmarkCircle}>
-            <Ionicons name="checkmark" size={40} color="#333333" />
+            <Ionicons name="checkmark" size={42} color="#111111" />
           </View>
-          
-          {/* Right Sparkle */}
-          <View style={[styles.sparkle, styles.sparkleRight]}>
-            <Ionicons name="star" size={20} color="#B8A0C0" />
+
+          <View style={[styles.sparkle, styles.sparkleRight]} pointerEvents="none">
+            <Ionicons name="sparkles" size={18} color="#C2ABC9" />
           </View>
         </View>
 
-        {/* Title */}
         <Text style={styles.title}>Your outfit is completed</Text>
       </View>
 
-      {/* Bottom Section - Light Purple Background */}
-      <View style={styles.bottomSection}>
-        {/* Feedback Section */}
+      <View
+        style={[
+          styles.bottomSection,
+          {
+            paddingBottom: Math.max(insets.bottom + panelBottomInset, 56),
+          },
+        ]}
+      >
         <Text style={styles.feedbackLabel}>Please share feedback</Text>
-        
+
         <View style={styles.feedbackContainer}>
-          {/* Sad Face */}
           <TouchableOpacity
             style={[
               styles.feedbackButton,
@@ -67,10 +83,13 @@ export const OutfitCompleteScreen: React.FC<OutfitCompleteScreenProps> = ({ navi
             onPress={() => setSelectedFeedback('sad')}
             activeOpacity={0.7}
           >
-            <Text style={styles.emoji}>😞</Text>
+            <MaterialCommunityIcons
+              name="emoticon-sad-outline"
+              size={29}
+              color={selectedFeedback === 'sad' ? '#B58ABC' : '#777777'}
+            />
           </TouchableOpacity>
 
-          {/* Neutral Face */}
           <TouchableOpacity
             style={[
               styles.feedbackButton,
@@ -79,10 +98,13 @@ export const OutfitCompleteScreen: React.FC<OutfitCompleteScreenProps> = ({ navi
             onPress={() => setSelectedFeedback('neutral')}
             activeOpacity={0.7}
           >
-            <Text style={styles.emoji}>😐</Text>
+            <MaterialCommunityIcons
+              name="emoticon-neutral-outline"
+              size={29}
+              color={selectedFeedback === 'neutral' ? '#B58ABC' : '#777777'}
+            />
           </TouchableOpacity>
 
-          {/* Happy Face */}
           <TouchableOpacity
             style={[
               styles.feedbackButton,
@@ -91,11 +113,14 @@ export const OutfitCompleteScreen: React.FC<OutfitCompleteScreenProps> = ({ navi
             onPress={() => setSelectedFeedback('happy')}
             activeOpacity={0.7}
           >
-            <Text style={styles.emoji}>😊</Text>
+            <MaterialCommunityIcons
+              name="emoticon-happy-outline"
+              size={29}
+              color={selectedFeedback === 'happy' ? '#B58ABC' : '#777777'}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* Go to Dashboard Button */}
         <TouchableOpacity
           style={styles.dashboardButton}
           onPress={handleGoToDashboard}
@@ -111,28 +136,27 @@ export const OutfitCompleteScreen: React.FC<OutfitCompleteScreenProps> = ({ navi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#EEEEEE',
   },
   topSection: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
+    width: '100%',
     alignItems: 'center',
-    paddingTop: height * 0.15,
-    paddingBottom: 40,
+    justifyContent: 'center',
   },
   iconContainer: {
-    flexDirection: 'row',
+    width: 132,
+    height: 96,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 26,
   },
   checkmarkCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: '#333333',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 3,
+    borderColor: '#111111',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -140,69 +164,73 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   sparkleLeft: {
-    left: -20,
-    top: 10,
-    transform: [{ rotate: '-15deg' }],
+    left: 10,
+    top: 31,
   },
   sparkleRight: {
-    right: -24,
-    top: 5,
-    transform: [{ rotate: '15deg' }],
+    right: 6,
+    top: 16,
   },
   title: {
-    fontFamily: fontNames.medium,
-    fontSize: 20,
-    color: '#333333',
+    ...typography.title3,
+    fontSize: typography.title3.fontSize * 1.44,
+    lineHeight: 36,
+    letterSpacing: -0.1,
+    color: '#111111',
     textAlign: 'center',
   },
   bottomSection: {
-    backgroundColor: '#E8E0E8',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 40,
-    paddingTop: 40,
-    paddingBottom: 50,
+    width: '100%',
+    backgroundColor: '#DCD5DD',
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
+    paddingHorizontal: 30,
+    paddingTop: 56,
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   feedbackLabel: {
+    ...typography.callout,
     fontFamily: fontNames.medium,
-    fontSize: 16,
-    color: '#333333',
-    marginBottom: 20,
+    fontSize: typography.callout.fontSize * 1.44,
+    lineHeight: 29,
+    color: '#111111',
+    marginBottom: 28,
   },
   feedbackContainer: {
     flexDirection: 'row',
-    gap: 20,
-    marginBottom: 30,
+    gap: 36,
+    marginBottom: 34,
   },
   feedbackButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D0D0D0',
+    backgroundColor: 'transparent',
+    borderWidth: 2.3,
+    borderColor: '#777777',
   },
   feedbackButtonSelected: {
-    borderColor: '#B8A0C0',
-    backgroundColor: '#F5F0F5',
-  },
-  emoji: {
-    fontSize: 28,
+    borderColor: '#B58ABC',
   },
   dashboardButton: {
-    width: '100%',
-    height: 50,
+    width: '86%',
+    height: 58,
     backgroundColor: '#111111',
-    borderRadius: 25,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   dashboardButtonText: {
     fontFamily: fontNames.medium,
     fontSize: 16,
+    letterSpacing: -0.08,
     color: '#FFFFFF',
   },
 });

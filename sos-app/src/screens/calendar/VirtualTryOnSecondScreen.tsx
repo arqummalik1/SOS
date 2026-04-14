@@ -209,7 +209,7 @@ export const VirtualTryOnSecondScreen: React.FC<VirtualTryOnSecondScreenProps> =
 
         <TouchableOpacity
           style={[styles.saveBtn, { width: saveBtnWidth }]}
-          onPress={() => navigation.navigate('OutfitComplete')}
+          onPress={() => navigation.navigate('SwitchTheItem')}
           activeOpacity={0.9}
         >
           <Text style={styles.saveBtnText}>Save outfit</Text>
