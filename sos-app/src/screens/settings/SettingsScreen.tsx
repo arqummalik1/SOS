@@ -1,193 +1,225 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
+  Alert,
+  Platform,
   ScrollView,
-  Switch,
-  Image,
-  StatusBar,
+  StyleSheet,
+  Pressable,
+  Text,
+  ToastAndroid,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, fontNames } from '../../theme';
 import { typography } from '../../theme/typography';
-import { useAuth } from '../../store/AuthContext';
-import { useUser } from '../../store/UserContext';
-import { useOutfits } from '../../store/OutfitContext';
-import { LinearGradient } from 'expo-linear-gradient';
 
 interface SettingsScreenProps {
   navigation: NativeStackNavigationProp<any>;
 }
 
-export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const { logout } = useAuth();
-  const { user, clearUserData } = useUser();
-  const { clearSavedOutfits } = useOutfits();
-  const [darkMode, setDarkMode] = useState(false);
+type ToggleKey =
+  | 'pushNotifications'
+  | 'outfitReminders'
+  | 'trendAlerts'
+  | 'weeklyPlanner'
+  | 'emailNotifications'
+  | 'calendarAccess'
+  | 'locationAccess'
+  | 'photoLibraryAccess'
+  | 'contactsAccess';
 
-  const renderSettingItem = (
-    icon: string,
-    label: string,
-    onPress?: () => void,
-    value?: React.ReactNode
-  ) => (
-    <TouchableOpacity 
-      style={styles.settingItem} 
-      onPress={onPress}
-      disabled={!onPress}
-      activeOpacity={0.7}
+const sectionSpacing = {
+  top: 26,
+  section: 20,
+  row: 14,
+};
+
+const TextRow: React.FC<{ label: string; onPress?: () => void }> = ({ label, onPress }) => (
+  <TouchableOpacity
+    style={styles.textRow}
+    onPress={onPress}
+    disabled={onPress == null}
+    activeOpacity={0.7}
+  >
+    <Text style={styles.textRowLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
+const ToggleRow: React.FC<{
+  label: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+}> = ({ label, value, onValueChange }) => (
+  <View style={styles.toggleRow}>
+    <Text style={styles.textRowLabel}>{label}</Text>
+    <Pressable
+      style={styles.toggleHitbox}
+      onPress={() => onValueChange(!value)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
     >
-      <View style={styles.settingIcon}>
-        <Ionicons name={icon as any} size={22} color="#9B7BA0" />
+      <View style={styles.toggleTrack}>
+        <View style={[styles.toggleThumb, value && styles.toggleThumbOn]} />
       </View>
-      <Text style={styles.settingLabel}>{label}</Text>
-      {value ? (
-        <View style={styles.settingValue}>
-          {value}
-        </View>
-      ) : onPress ? (
-        <Ionicons name="chevron-forward" size={20} color="#B79CBC" />
-      ) : null}
-    </TouchableOpacity>
-  );
+    </Pressable>
+  </View>
+);
+
+const SectionBlock: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <View style={styles.sectionBlock}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {children}
+  </View>
+);
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const contentWidth = Math.min(380, width - 32);
+  const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
+    pushNotifications: true,
+    outfitReminders: true,
+    trendAlerts: true,
+    weeklyPlanner: true,
+    emailNotifications: true,
+    calendarAccess: true,
+    locationAccess: true,
+    photoLibraryAccess: true,
+    contactsAccess: true,
+  });
+
+  const setToggle = (key: ToggleKey) => (next: boolean) =>
+    setToggles((current) => ({
+      ...current,
+      [key]: next,
+    }));
+
+  const showRowFeedback = (label: string) => {
+    const message = `${label} clicked`;
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+      return;
+    }
+    Alert.alert('Setting', message);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.gray[100]} />
-      
-      {/* Pink/Purple Gradient Header Background */}
-      <LinearGradient
-        colors={['#E8D5E8', '#F3E8F3', colors.gray[100]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0.6 }}
-        style={styles.gradientHeader}
-      />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={24} color="#1F2937" />
+      <View style={[styles.header, { width: contentWidth }]}>
+        <TouchableOpacity
+          style={styles.backRow}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={16} color="#121212" />
+          <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>Setting</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <Image 
-            source={{ uri: user?.profileImage || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200' }} 
-            style={styles.profileAvatar} 
+      <ScrollView contentContainerStyle={[styles.scrollContent, { width: contentWidth }]}>
+        <SectionBlock title="Account Settings">
+          <TextRow
+            label="Manage active sessions/devices"
+            onPress={() => showRowFeedback('Manage active sessions/devices')}
           />
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || 'Guest'}</Text>
-            <Text style={styles.profileEmail}>{user?.phone || 'No phone number'}</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={() => navigation.navigate('EditProfile')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="create-outline" size={20} color="#9B7BA0" />
-          </TouchableOpacity>
-        </View>
+          <TextRow
+            label="Change password"
+            onPress={() => showRowFeedback('Change password')}
+          />
+          <TextRow
+            label="Delete account"
+            onPress={() => showRowFeedback('Delete account')}
+          />
+        </SectionBlock>
 
-        {/* Preferences Section - Only Dark Mode */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <View style={styles.sectionContent}>
-            {renderSettingItem(
-              'moon-outline',
-              'Dark Mode',
-              undefined,
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: '#E5E7EB', true: '#B79CBC' }}
-                thumbColor={darkMode ? '#FFFFFF' : '#9CA3AF'}
-              />
-            )}
-          </View>
-        </View>
+        <SectionBlock title="Preferences">
+          <TextRow
+            label="Measurement units (Metric/Imperial)"
+            onPress={() => showRowFeedback('Measurement units')}
+          />
+          <TextRow label="Currency" onPress={() => showRowFeedback('Currency')} />
+          <TextRow label="Language" onPress={() => showRowFeedback('Language')} />
+        </SectionBlock>
 
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.sectionContent}>
-            {renderSettingItem(
-              'person-outline',
-              'Edit Profile',
-              () => navigation.navigate('EditProfile')
-            )}
-            {renderSettingItem(
-              'lock-closed-outline',
-              'Change Password',
-              () => {}
-            )}
-            {renderSettingItem(
-              'shield-outline',
-              'Privacy',
-              () => navigation.navigate('Privacy')
-            )}
-          </View>
-        </View>
+        <SectionBlock title="Notifications">
+          <ToggleRow
+            label="Push notifications"
+            value={toggles.pushNotifications}
+            onValueChange={setToggle('pushNotifications')}
+          />
+          <ToggleRow
+            label="Outfit reminders"
+            value={toggles.outfitReminders}
+            onValueChange={setToggle('outfitReminders')}
+          />
+          <ToggleRow
+            label="Trend alerts"
+            value={toggles.trendAlerts}
+            onValueChange={setToggle('trendAlerts')}
+          />
+          <ToggleRow
+            label="Weekly planner"
+            value={toggles.weeklyPlanner}
+            onValueChange={setToggle('weeklyPlanner')}
+          />
+          <ToggleRow
+            label="Email notifications"
+            value={toggles.emailNotifications}
+            onValueChange={setToggle('emailNotifications')}
+          />
+        </SectionBlock>
 
-        {/* Support Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.sectionContent}>
-            {renderSettingItem(
-              'help-circle-outline',
-              'Help Center',
-              () => navigation.navigate('Help')
-            )}
-            {renderSettingItem(
-              'mail-outline',
-              'Contact Us',
-              () => {}
-            )}
-            {renderSettingItem(
-              'document-text-outline',
-              'Terms of Service',
-              () => {}
-            )}
-          </View>
-        </View>
+        <SectionBlock title="Privacy">
+          <ToggleRow
+            label="Calendar access"
+            value={toggles.calendarAccess}
+            onValueChange={setToggle('calendarAccess')}
+          />
+          <ToggleRow
+            label="Location access"
+            value={toggles.locationAccess}
+            onValueChange={setToggle('locationAccess')}
+          />
+          <ToggleRow
+            label="Photo library access"
+            value={toggles.photoLibraryAccess}
+            onValueChange={setToggle('photoLibraryAccess')}
+          />
+          <ToggleRow
+            label="Contacts access"
+            value={toggles.contactsAccess}
+            onValueChange={setToggle('contactsAccess')}
+          />
+        </SectionBlock>
 
-        {/* About Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <View style={styles.sectionContent}>
-            <View style={styles.settingItem}>
-              <View style={styles.settingIcon}>
-                <Ionicons name="information-circle-outline" size={22} color="#9B7BA0" />
-              </View>
-              <Text style={styles.settingLabel}>App Version</Text>
-              <Text style={styles.versionText}>1.0.0</Text>
-            </View>
-          </View>
-        </View>
+        <SectionBlock title="Data section">
+          <TextRow
+            label="Export my data"
+            onPress={() => showRowFeedback('Export my data')}
+          />
+          <TextRow label="Clear cache" onPress={() => showRowFeedback('Clear cache')} />
+        </SectionBlock>
 
-        {/* Logout Button */}
-        <TouchableOpacity 
-          style={styles.logoutButton} 
-          activeOpacity={0.7}
-          onPress={async () => {
-            await logout();
-            clearUserData();
-            clearSavedOutfits();
-            navigation.navigate('First');
-          }}
-        >
-          <Ionicons name="log-out-outline" size={22} color="#FF375F" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <SectionBlock title="About">
+          <TextRow label="App version" onPress={() => showRowFeedback('App version')} />
+          <TextRow
+            label="Terms of service"
+            onPress={() => showRowFeedback('Terms of service')}
+          />
+          <TextRow
+            label="Privacy policy"
+            onPress={() => showRowFeedback('Privacy policy')}
+          />
+          <TextRow
+            label="Contact support"
+            onPress={() => showRowFeedback('Contact support')}
+          />
+        </SectionBlock>
 
-        <View style={styles.bottomPadding} />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -196,143 +228,92 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray[100],
-  },
-  gradientHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
+    backgroundColor: '#EEECE2',
+    alignItems: 'center',
   },
   header: {
+    paddingTop: 8,
+    paddingBottom: 18,
+    alignItems: 'center',
+  },
+  backRow: {
+    position: 'absolute',
+    left: 0,
+    top: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: 'transparent',
+    gap: 4,
+  },
+  backText: {
+    ...typography.footnote,
+    color: '#111111',
+    fontWeight: '400',
   },
   headerTitle: {
-    ...typography.headline,
-    color: '#1F2937',
+    ...typography.title3,
+    color: '#111111',
+    fontWeight: '600',
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingTop: 16,
+    alignSelf: 'center',
+    paddingTop: sectionSpacing.top,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  profileInfo: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  profileName: {
-    ...typography.headline,
-    color: '#1F2937',
-    marginBottom: 4,
-  },
-  profileEmail: {
-    ...typography.subheadline,
-    color: '#6B7280',
-  },
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F6F0F7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  section: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
+  sectionBlock: {
+    marginBottom: sectionSpacing.section,
   },
   sectionTitle: {
     ...typography.footnote,
-    color: '#9B7BA0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    color: '#1B1B1B',
+    fontWeight: '600',
+    marginBottom: 9,
   },
-  sectionContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    overflow: 'hidden',
+  textRow: {
+    minHeight: 26,
+    justifyContent: 'center',
+    marginBottom: sectionSpacing.row,
+  },
+  textRowLabel: {
+    ...typography.callout,
+    color: '#101010',
+    fontWeight: '500',
+    paddingLeft: 14,
+  },
+  toggleRow: {
+    minHeight: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: sectionSpacing.row,
+  },
+  toggleHitbox: {
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+  },
+  toggleTrack: {
+    width: 66,
+    height: 36,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#E8E0CC',
+    backgroundColor: '#E4E0D4',
+    justifyContent: 'center',
+  },
+  toggleThumb: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#47422F',
+    marginLeft: 3,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.22,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#F0F0F0',
+  toggleThumbOn: {
+    marginLeft: 33,
   },
-  settingIcon: {
-    width: 36,
+  bottomSpacer: {
     height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F6F0F7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  settingLabel: {
-    flex: 1,
-    ...typography.body,
-    color: '#374151',
-  },
-  settingValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  versionText: {
-    ...typography.body,
-    color: '#9CA3AF',
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingVertical: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    gap: 8,
-  },
-  logoutText: {
-    ...typography.body,
-    color: '#FF375F',
-  },
-  bottomPadding: {
-    height: 40,
   },
 });
