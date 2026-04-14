@@ -5,6 +5,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SvgUri } from 'react-native-svg';
 import { SafeContainer } from '../../components/layout/SafeContainer';
+import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -48,6 +49,29 @@ const UPI_APPS = [
   { id: 'amazonpay', source: require('../../../assets/icons-svg/payment/amazonpay.svg') },
 ];
 
+const BANK_OPTIONS = [
+  'State Bank of India',
+  'HDFC Bank',
+  'Axis Bank',
+  'Canara Bank',
+  'J&K Bank',
+  'ICICI Bank',
+  'Punjab National Bank',
+  'Bank of Baroda',
+];
+
+const paymentTheme = {
+  pageBg: '#F3F3F6',
+  cardBg: '#F7F7F9',
+  borderSoft: '#BCBEC6',
+  borderField: '#C9CBD2',
+  borderFieldFocused: '#111111',
+  borderError: '#D74444',
+  titleText: '#1F2024',
+  mutedText: '#8D8E95',
+  success: '#21A521',
+} as const;
+
 export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const [expandedSection, setExpandedSection] = useState<GatewayType | null>(null);
@@ -71,6 +95,8 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
   const [paypalId, setPaypalId] = useState('');
   const [paypalFocused, setPaypalFocused] = useState(false);
   const [saveCardDetails, setSaveCardDetails] = useState(false);
+  const [selectedBank, setSelectedBank] = useState<string | null>(null);
+  const [isBankListOpen, setIsBankListOpen] = useState(false);
   const upiInputRef = useRef<TextInput>(null);
 
   // Match CustomTabBar width: it uses left/right inset of 24.
@@ -157,6 +183,9 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
       if (next !== 'upi') {
         setIsUpiVerified(false);
       }
+      if (next !== 'banking') {
+        setIsBankListOpen(false);
+      }
       return next;
     });
   };
@@ -178,6 +207,7 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
   const renderOptionRow = (option: (typeof OPTIONS)[number]) => {
     const isExpanded = expandedSection === option.id;
     const isCardExpanded = option.id === 'card' && isExpanded;
+    const isBankingExpanded = option.id === 'banking' && isExpanded;
     const isWalletExpanded = option.id === 'wallet' && isExpanded;
     const isUpiExpanded = option.id === 'upi' && isExpanded;
 
@@ -189,13 +219,15 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
           { width: cardWidth },
           isUpiExpanded && styles.rowWrapExpanded,
           isCardExpanded && styles.rowWrapExpanded,
+          isBankingExpanded && styles.rowWrapExpanded,
           isWalletExpanded && styles.rowWrapExpanded,
+          isBankingExpanded && isBankListOpen && styles.rowWrapOverflowVisible,
         ]}
       >
         <Pressable
           style={[
             styles.optionRow,
-            (isUpiExpanded || isWalletExpanded) && styles.optionRowExpanded,
+            (isUpiExpanded || isWalletExpanded || isBankingExpanded) && styles.optionRowExpanded,
           ]}
           onPress={() => onToggleSection(option.id)}
         >
@@ -314,6 +346,44 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
                 {saveCardDetails ? <Ionicons name="checkmark" size={13} color="#111111" /> : null}
               </View>
               <Text style={styles.saveText}>Save details for future</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {isBankingExpanded ? (
+          <View style={styles.netBankingExpandedBody}>
+            <Text style={styles.netBankingLabel}>Select Bank from the List</Text>
+
+            <Pressable style={styles.bankSelector} onPress={() => setIsBankListOpen((current) => !current)}>
+              <Text style={[styles.bankSelectorText, !selectedBank && styles.bankSelectorPlaceholder]}>
+                {selectedBank ?? 'Select Bank'}
+              </Text>
+              <Ionicons name={isBankListOpen ? 'chevron-up' : 'chevron-down'} size={18} color="#111111" />
+            </Pressable>
+
+            {isBankListOpen ? (
+              <View style={styles.bankList}>
+                {BANK_OPTIONS.map((bank, index) => (
+                  <Pressable
+                    key={bank}
+                    style={[styles.bankListItem, index !== BANK_OPTIONS.length - 1 && styles.bankListItemBorder]}
+                    onPress={() => {
+                      setSelectedBank(bank);
+                      setIsBankListOpen(false);
+                    }}
+                  >
+                    <View style={styles.bankBullet} />
+                    <Text style={styles.bankListItemText}>{bank}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : null}
+
+            <Pressable
+              style={[styles.netBankingProceedButton, selectedBank != null && styles.netBankingProceedButtonEnabled]}
+              disabled={selectedBank == null}
+            >
+              <Text style={styles.netBankingProceedText}>Proceed</Text>
             </Pressable>
           </View>
         ) : null}
@@ -462,7 +532,7 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F3F6',
+    backgroundColor: paymentTheme.pageBg,
   },
   header: {
     height: 58,
@@ -474,7 +544,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...typography.title3,
-    color: '#1F2024',
+    color: paymentTheme.titleText,
     fontWeight: '600',
   },
   headerSpacer: {
@@ -500,13 +570,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rowWrap: {
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     borderRadius: 9,
     overflow: 'hidden',
   },
+  rowWrapOverflowVisible: {
+    overflow: 'visible',
+    zIndex: 50,
+    elevation: 6,
+  },
   rowWrapExpanded: {
     borderWidth: 1,
-    borderColor: '#BCBEC6',
+    borderColor: paymentTheme.borderSoft,
   },
   optionRow: {
     height: 64,
@@ -514,7 +589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
   },
   optionRowExpanded: {
     borderBottomWidth: 1,
@@ -529,21 +604,21 @@ const styles = StyleSheet.create({
   },
   optionText: {
     ...typography.body,
-    color: '#111111',
+    color: paymentTheme.titleText,
     fontWeight: '400',
   },
   upiExpandedBody: {
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 16,
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     borderWidth: 0,
   },
   cardExpandedBody: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     borderWidth: 0,
   },
   inputLabel: {
@@ -552,25 +627,25 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   inputLabelInvalid: {
-    color: '#D74444',
+    color: paymentTheme.borderError,
   },
   cardInput: {
     height: 46,
     borderWidth: 1,
-    borderColor: '#C9CBD2',
+    borderColor: paymentTheme.borderField,
     borderRadius: 10,
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     paddingHorizontal: 12,
     ...typography.callout,
     color: '#23242A',
     marginBottom: 10,
   },
   cardInputFocused: {
-    borderColor: '#111111',
+    borderColor: paymentTheme.borderFieldFocused,
   },
   cardInputInvalid: {
-    borderColor: '#D74444',
-    color: '#D74444',
+    borderColor: paymentTheme.borderError,
+    color: paymentTheme.borderError,
   },
   cardDualRow: {
     flexDirection: 'row',
@@ -581,7 +656,7 @@ const styles = StyleSheet.create({
   },
   cardErrorText: {
     ...typography.caption1,
-    color: '#D74444',
+    color: paymentTheme.borderError,
     marginTop: -2,
     marginBottom: 6,
   },
@@ -594,7 +669,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardPayButtonEnabled: {
-    backgroundColor: '#111111',
+    backgroundColor: colors.solid.black,
   },
   cardPayText: {
     ...typography.subheadline,
@@ -607,11 +682,96 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 10,
   },
+  netBankingExpandedBody: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: paymentTheme.cardBg,
+    borderWidth: 0,
+  },
+  netBankingLabel: {
+    ...typography.body,
+    color: paymentTheme.titleText,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  bankSelector: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: paymentTheme.borderSoft,
+    backgroundColor: paymentTheme.cardBg,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  bankSelectorText: {
+    ...typography.callout,
+    color: paymentTheme.titleText,
+    flex: 1,
+    paddingRight: 8,
+  },
+  bankSelectorPlaceholder: {
+    color: paymentTheme.mutedText,
+  },
+  bankList: {
+    marginTop: 0,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: paymentTheme.borderSoft,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    backgroundColor: paymentTheme.cardBg,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  bankListItem: {
+    height: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    gap: 12,
+  },
+  bankListItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E1E6',
+  },
+  bankBullet: {
+    width: 28,
+    height: 28,
+    borderRadius: 4,
+    backgroundColor: '#C4C4C4',
+  },
+  bankListItemText: {
+    ...typography.callout,
+    color: paymentTheme.titleText,
+  },
+  netBankingProceedButton: {
+    marginTop: 14,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#B8B9C0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  netBankingProceedButtonEnabled: {
+    backgroundColor: colors.solid.black,
+  },
+  netBankingProceedText: {
+    ...typography.subheadline,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
   paypalExpandedBody: {
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     borderWidth: 0,
   },
   paypalRow: {
@@ -623,12 +783,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderWidth: 1.5,
-    borderColor: '#111111',
+    borderColor: paymentTheme.borderFieldFocused,
     borderRadius: 12,
     paddingHorizontal: 12,
     ...typography.callout,
-    color: '#23242A',
-    backgroundColor: '#F7F7F9',
+    color: paymentTheme.titleText,
+    backgroundColor: paymentTheme.cardBg,
   },
   paypalConfirmButton: {
     width: 84,
@@ -639,7 +799,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   paypalConfirmButtonEnabled: {
-    backgroundColor: '#111111',
+    backgroundColor: colors.solid.black,
   },
   paypalConfirmText: {
     ...typography.subheadline,
@@ -663,7 +823,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 10,
     borderWidth: 0,
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
   },
   appTileSelected: {
     backgroundColor: '#EEE7F0',
@@ -685,12 +845,12 @@ const styles = StyleSheet.create({
   },
   enterUpiLabel: {
     ...typography.body,
-    color: '#111111',
+    color: paymentTheme.titleText,
     fontWeight: '600',
     marginBottom: 9,
   },
   enterUpiLabelInvalid: {
-    color: '#D74444',
+    color: paymentTheme.borderError,
   },
   upiActionRow: {
     flexDirection: 'row',
@@ -705,14 +865,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1.2,
     borderColor: '#8F919A',
-    backgroundColor: '#F7F7F9',
+    backgroundColor: paymentTheme.cardBg,
     paddingHorizontal: 0,
   },
   upiInputWrapInvalid: {
-    borderColor: '#D74444',
+    borderColor: paymentTheme.borderError,
   },
   upiInputWrapFocused: {
-    borderColor: '#111111',
+    borderColor: paymentTheme.borderFieldFocused,
   },
   upiInput: {
     ...typography.callout,
@@ -725,11 +885,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   upiInputInvalid: {
-    color: '#D74444',
+    color: paymentTheme.borderError,
   },
   upiValidationText: {
     ...typography.caption1,
-    color: '#D74444',
+    color: paymentTheme.borderError,
     marginBottom: 8,
   },
   verifiedBadge: {
@@ -738,7 +898,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#21A521',
+    backgroundColor: paymentTheme.success,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -751,7 +911,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   payNowButtonEnabled: {
-    backgroundColor: '#111111',
+    backgroundColor: colors.solid.black,
   },
   payNowText: {
     ...typography.subheadline,
