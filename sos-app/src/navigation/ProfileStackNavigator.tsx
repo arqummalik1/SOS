@@ -10,6 +10,8 @@ import { WardrobeScreen } from '../screens/wardrobe/WardrobeScreen';
 import { StylistScreen } from '../screens/stylist/StylistScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { PaymentGatewayScreen } from '../screens/profile/PaymentGatewayScreen';
+import { SubscriptionScreen } from '../screens/profile/SubscriptionScreen';
+import { SubscriptionSecureCheckoutScreen } from '../screens/profile/SubscriptionSecureCheckoutScreen';
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -22,6 +24,13 @@ export type ProfileStackParamList = {
   Stylist: undefined;
   Settings: undefined;
   Subscription: undefined;
+  SubscriptionSecureCheckout:
+    | {
+        plan?: 'free' | 'premium';
+        cycle?: 'annual' | 'monthly';
+      }
+    | undefined;
+  PaymentGateway: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -32,7 +41,12 @@ export const ProfileStackNavigator: React.FC = () => {
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="Subscription" component={PaymentGatewayScreen} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen
+        name="SubscriptionSecureCheckout"
+        component={SubscriptionSecureCheckoutScreen}
+      />
+      <Stack.Screen name="PaymentGateway" component={PaymentGatewayScreen} />
       <Stack.Screen name="Privacy" component={PrivacyScreen} />
       <Stack.Screen name="Help" component={HelpScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />

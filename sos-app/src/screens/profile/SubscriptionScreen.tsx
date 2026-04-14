@@ -1,90 +1,153 @@
-import React from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeContainer } from '../../components/layout/SafeContainer';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Asset } from 'expo-asset';
 import { SvgUri } from 'react-native-svg';
+import { SafeContainer } from '../../components/layout/SafeContainer';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { FeatureRow, PlanSegment, PrimaryActionButton, SubscriptionHeader } from './components/SubscriptionFlowComponents';
 
 interface SubscriptionScreenProps {
   navigation: NativeStackNavigationProp<any>;
 }
 
-const PAYMENT_OPTIONS = [
-  { icon: 'card-outline' as const, label: 'Credit / Debit cards' },
-  { icon: 'business-outline' as const, label: 'Net Banking' },
-  { icon: 'wallet-outline' as const, label: 'Wallets' },
+type PlanKind = 'free' | 'premium';
+type BillingCycle = 'annual' | 'monthly';
+
+const FREE_FEATURE_ROWS: Array<{ label: string; freeIncluded: boolean }> = [
+  { label: 'Add up to 10 wardrobe items', freeIncluded: true },
+  { label: 'Manual weekly planning', freeIncluded: true },
+  { label: 'Limited outfit suggestions', freeIncluded: true },
+  { label: 'Advanced AI recommendations', freeIncluded: false },
+  { label: 'Weekly outfit planner', freeIncluded: false },
+  { label: 'Auto-plan your week in seconds', freeIncluded: false },
+  { label: 'Unlimited wardrobe items', freeIncluded: false },
+  { label: 'Ad-free experience', freeIncluded: false },
 ];
 
-const PAYMENT_APPS = [
-  { id: 'phonepe', source: require('../../../assets/icons-svg/payment/phonepe.svg') },
-  { id: 'paytm', source: require('../../../assets/icons-svg/payment/paytm.svg') },
-  { id: 'googlepay', source: require('../../../assets/icons-svg/payment/googlePay.svg') },
-  { id: 'amazonpay', source: require('../../../assets/icons-svg/payment/amazonpay.svg') },
+const PREMIUM_FEATURE_ROWS = [
+  'Everything in free plan included',
+  'Manual weekly planning',
+  'Limited outfit suggestions',
+  'Advanced AI recommendations',
+  'Weekly outfit planner',
+  'Auto-plan your week in seconds',
+  'Unlimited wardrobe items',
+  'Ad-free experience',
 ];
 
 export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigation }) => {
   const { width } = useWindowDimensions();
-  const cardWidth = width - 32;
+  const tabBarHeight = useBottomTabBarHeight();
+  const contentWidth = Math.min(382, width - 28);
+  const heroHeight = Math.round(contentWidth * (185 / 437));
+  const [selectedPlan, setSelectedPlan] = useState<PlanKind>('free');
+  const [selectedCycle, setSelectedCycle] = useState<BillingCycle>('annual');
+
+  const renderPricingCard = (cycle: BillingCycle) => {
+    const isSelected = selectedCycle === cycle;
+    const title = cycle === 'annual' ? 'Annual' : 'Monthly';
+    const strike = cycle === 'annual' ? '₹999' : '₹99';
+    const value = cycle === 'annual' ? '₹599' : '₹59';
+
+    const cardBody = (
+      <>
+        <Text style={styles.priceTitle}>{title}</Text>
+        <Text style={styles.priceStrike}>{strike}</Text>
+        <Text style={[styles.priceValue, isSelected ? styles.priceValueSelected : styles.priceValueUnselected]}>{value}</Text>
+        <Text style={styles.priceMeta}>per year after 7 days trial</Text>
+      </>
+    );
+
+    return (
+      <TouchableOpacity
+        key={cycle}
+        style={[styles.priceCard, isSelected && styles.priceCardSelected]}
+        activeOpacity={0.9}
+        onPress={() => setSelectedCycle(cycle)}
+      >
+        {isSelected ? (
+          <LinearGradient
+            colors={['#E8DDEA', '#D2B9DC']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.priceCardGradient}
+          >
+            {cardBody}
+          </LinearGradient>
+        ) : (
+          <View style={styles.priceCardPlain}>{cardBody}</View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeContainer style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment type</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + 110 }]}
+      >
+        <View style={{ width: contentWidth }}>
+          <SubscriptionHeader
+            title="Subscription"
+            subtitle="Manage your subscription"
+            onBack={() => navigation.goBack()}
+          />
 
-      <View style={styles.content}>
-        {PAYMENT_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.label}
-            style={[styles.optionRow, { width: cardWidth }]}
-            activeOpacity={0.82}
-          >
-            <View style={styles.optionLeft}>
-              <Ionicons name={option.icon} size={28} color="#111111" />
-              <Text style={styles.optionLabel}>{option.label}</Text>
-            </View>
-            <Ionicons name="chevron-down" size={20} color="#111111" />
-          </TouchableOpacity>
-        ))}
-
-        <View style={[styles.payTypeCard, { width: cardWidth }]}>
-          <Text style={styles.payTypeTitle}>Pay by any UPI app</Text>
-
-          <View style={styles.appsRow}>
-            {PAYMENT_APPS.map((app) => (
-              <TouchableOpacity key={app.id} style={styles.appTile} activeOpacity={0.86}>
-                <SvgUri
-                  width={52}
-                  height={52}
-                  uri={Asset.fromModule(app.source).uri}
-                />
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.heroCard, { height: heroHeight }]}>
+            <SvgUri
+              width={contentWidth}
+              height={heroHeight}
+              uri={Asset.fromModule(require('../../../assets/Susbcription/UnlockPremiumFeatures.svg')).uri}
+            />
           </View>
 
-          <View style={styles.payRow}>
-            <TouchableOpacity style={styles.inputBtn} activeOpacity={0.9}>
-              <Text style={styles.inputText}>Enter UPI ID</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.payBtn} activeOpacity={0.88}>
-              <Text style={styles.payBtnText}>Pay</Text>
-            </TouchableOpacity>
+          <Text style={styles.planTitle}>You’re on the {selectedPlan === 'free' ? 'Free' : 'Premium'} Plan</Text>
+          <Text style={styles.planSubtitle}>Unlock premium styling features for a smarter wardrobe experience.</Text>
+
+          <PlanSegment selected={selectedPlan} onChange={setSelectedPlan} />
+
+          <View style={styles.featuresWrap}>
+            {selectedPlan === 'free'
+              ? FREE_FEATURE_ROWS.map((feature) => (
+                  <FeatureRow key={feature.label} label={feature.label} included={feature.freeIncluded} />
+                ))
+              : PREMIUM_FEATURE_ROWS.map((label) => <FeatureRow key={label} label={label} included />)}
           </View>
+
+          {selectedPlan === 'free' ? (
+            <PrimaryActionButton
+              label="Try Premium for 7 Days for free"
+              onPress={() =>
+                navigation.navigate('SubscriptionSecureCheckout', {
+                  plan: 'free',
+                })
+              }
+            />
+          ) : (
+            <>
+              <View style={styles.pricingRow}>
+                {renderPricingCard('annual')}
+                {renderPricingCard('monthly')}
+              </View>
+
+              <PrimaryActionButton
+                label={selectedCycle === 'annual' ? 'Upgrade To Annual' : 'Upgrade To Monthly'}
+                style={styles.upgradeCta}
+                onPress={() =>
+                  navigation.navigate('SubscriptionSecureCheckout', {
+                    plan: 'premium',
+                    cycle: selectedCycle,
+                  })
+                }
+              />
+            </>
+          )}
         </View>
-      </View>
+      </ScrollView>
     </SafeContainer>
   );
 };
@@ -92,104 +155,104 @@ export const SubscriptionScreen: React.FC<SubscriptionScreenProps> = ({ navigati
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F2F2F2',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: spacing.lg,
-    paddingBottom: 14,
-    backgroundColor: '#FFFFFF',
-  },
-  headerTitle: {
-    ...typography.headline,
-    color: '#111111',
-  },
-  headerSpacer: {
-    width: 28,
-  },
-  content: {
-    paddingTop: 54,
+  scrollContent: {
     alignItems: 'center',
     paddingBottom: 26,
-    gap: 8,
+    paddingTop: 4,
   },
-  optionRow: {
-    height: 64,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  heroCard: {
+    marginTop: 6,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
-  optionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+  planTitle: {
+    marginTop: 16,
+    ...typography.title2,
+    color: '#141414',
+    textAlign: 'center',
+    fontWeight: '700',
   },
-  optionLabel: {
+  planSubtitle: {
+    marginTop: 4,
+    marginBottom: 16,
     ...typography.body,
-    color: '#111111',
+    color: '#2F2F2F',
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
-  payTypeCard: {
-    marginTop: 8,
-    height: 300,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#C5C6CC',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingTop: 22,
+  featuresWrap: {
+    marginTop: 20,
+    marginBottom: 8,
   },
-  payTypeTitle: {
-    ...typography.medium,
-    color: '#111111',
-  },
-  appsRow: {
-    marginTop: 18,
+  pricingRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 6,
+    marginBottom: 18,
   },
-  appTile: {
-    width: 51,
-    height: 51,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  priceCard: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  priceCardGradient: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minHeight: 152,
+  },
+  priceCardPlain: {
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    minHeight: 152,
     backgroundColor: '#FFFFFF',
   },
-  payRow: {
-    marginTop: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  priceCardSelected: {
+    transform: [{ scale: 1.02 }],
   },
-  inputBtn: {
-    width: 205,
-    height: 48,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#111111',
-    paddingHorizontal: 14,
-    justifyContent: 'center',
+  priceTitle: {
+    ...typography.headline,
+    color: '#1C1C1E',
+    textAlign: 'center',
   },
-  inputText: {
-    ...typography.subheadline,
-    color: '#444444',
+  priceStrike: {
+    marginTop: 5,
+    ...typography.footnote,
+    color: '#7A7A80',
+    textDecorationLine: 'line-through',
+    textAlign: 'center',
   },
-  payBtn: {
-    width: 80,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#111111',
-    alignItems: 'center',
-    justifyContent: 'center',
+  priceValue: {
+    marginTop: 4,
+    ...typography.title1,
+    color: '#18181A',
+    textAlign: 'center',
+    fontWeight: '700',
+    letterSpacing: 0,
   },
-  payBtnText: {
-    ...typography.subheadline,
+  priceValueSelected: {
     color: '#FFFFFF',
+  },
+  priceValueUnselected: {
+    color: '#D2A7D9',
+  },
+  priceMeta: {
+    marginTop: 4,
+    ...typography.callout,
+    color: '#2B2B2F',
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 25,
+  },
+  upgradeCta: {
+    width: '50%',
+    alignSelf: 'center',
   },
 });
