@@ -60,24 +60,96 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
   const [nameOnCard, setNameOnCard] = useState('');
+  const [cardNumberTouched, setCardNumberTouched] = useState(false);
+  const [expiryTouched, setExpiryTouched] = useState(false);
+  const [cvvTouched, setCvvTouched] = useState(false);
+  const [cardNumberFocused, setCardNumberFocused] = useState(false);
+  const [expiryFocused, setExpiryFocused] = useState(false);
+  const [cvvFocused, setCvvFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [nameTouched, setNameTouched] = useState(false);
+  const [paypalId, setPaypalId] = useState('');
+  const [paypalFocused, setPaypalFocused] = useState(false);
+  const [saveCardDetails, setSaveCardDetails] = useState(false);
   const upiInputRef = useRef<TextInput>(null);
 
   // Match CustomTabBar width: it uses left/right inset of 24.
   const cardWidth = width - 48;
+  const webNoOutline = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null;
 
   const isUpiFormatValid = useMemo(() => /^[\w.+-]{2,}@[a-zA-Z]{2,}$/i.test(upiId.trim()), [upiId]);
   const hasUpiInput = upiId.trim().length > 0;
   const isUpiInvalid = hasUpiInput && !isUpiFormatValid;
   const isUpiActionEnabled = isUpiFormatValid;
   const upiActionLabel = isUpiVerified ? 'Pay Now' : 'Verify';
+  const cardNumberDigits = useMemo(() => cardNumber.replace(/\D/g, ''), [cardNumber]);
+  const cvvDigits = useMemo(() => cvv.replace(/\D/g, ''), [cvv]);
+
+  const isCardNumberValid = useMemo(() => {
+    if (cardNumberDigits.length !== 16) return false;
+    // Luhn check for card number validation.
+    let sum = 0;
+    let shouldDouble = false;
+    for (let i = cardNumberDigits.length - 1; i >= 0; i -= 1) {
+      let digit = Number(cardNumberDigits[i]);
+      if (shouldDouble) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+      shouldDouble = !shouldDouble;
+    }
+    return sum % 10 === 0;
+  }, [cardNumberDigits]);
+
+  const isExpiryValid = useMemo(() => {
+    const trimmed = expiry.trim();
+    const match = trimmed.match(/^(\d{2})\s*\/\s*(\d{2}|\d{4})$/);
+    if (!match) return false;
+
+    const month = Number(match[1]);
+    if (month < 1 || month > 12) return false;
+
+    let year = Number(match[2]);
+    if (match[2].length === 2) year += 2000;
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    if (year < currentYear) return false;
+    if (year === currentYear && month < currentMonth) return false;
+    return true;
+  }, [expiry]);
+
+  const isCvvValid = useMemo(() => cvvDigits.length >= 3 && cvvDigits.length <= 4, [cvvDigits]);
+  const isPaypalIdValid = useMemo(() => {
+    const value = paypalId.trim();
+    if (value.length < 6 || value.length > 254) return false;
+    // PayPal ID validation: use canonical email format.
+    return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value);
+  }, [paypalId]);
+
   const isCardFormValid = useMemo(() => {
-    return (
-      cardNumber.replace(/\s/g, '').length >= 12 &&
-      expiry.trim().length >= 4 &&
-      cvv.trim().length >= 3 &&
-      nameOnCard.trim().length >= 2
-    );
-  }, [cardNumber, expiry, cvv, nameOnCard]);
+    return isCardNumberValid && isExpiryValid && isCvvValid && nameOnCard.trim().length >= 2;
+  }, [isCardNumberValid, isExpiryValid, isCvvValid, nameOnCard]);
+
+  const showCardNumberInvalid = cardNumberTouched && cardNumber.trim().length > 0 && !isCardNumberValid;
+  const showExpiryInvalid = expiryTouched && expiry.trim().length > 0 && !isExpiryValid;
+  const showCvvInvalid = cvvTouched && cvv.trim().length > 0 && !isCvvValid;
+  const showNameInvalid = nameTouched && nameOnCard.trim().length > 0 && nameOnCard.trim().length < 2;
+  const showPaypalInvalid = paypalId.trim().length > 0 && !isPaypalIdValid;
+
+  const formatCardNumber = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
+    return digitsOnly.replace(/(\d{4})(?=\d)/g, '$1-');
+  };
+
+  const formatExpiry = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+    if (digitsOnly.length <= 2) return digitsOnly;
+    return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+  };
 
   const onToggleSection = (id: GatewayType) => {
     setExpandedSection((current) => {
@@ -106,6 +178,7 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
   const renderOptionRow = (option: (typeof OPTIONS)[number]) => {
     const isExpanded = expandedSection === option.id;
     const isCardExpanded = option.id === 'card' && isExpanded;
+    const isWalletExpanded = option.id === 'wallet' && isExpanded;
     const isUpiExpanded = option.id === 'upi' && isExpanded;
 
     return (
@@ -116,9 +189,16 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
           { width: cardWidth },
           isUpiExpanded && styles.rowWrapExpanded,
           isCardExpanded && styles.rowWrapExpanded,
+          isWalletExpanded && styles.rowWrapExpanded,
         ]}
       >
-        <Pressable style={[styles.optionRow, isUpiExpanded && styles.optionRowExpanded]} onPress={() => onToggleSection(option.id)}>
+        <Pressable
+          style={[
+            styles.optionRow,
+            (isUpiExpanded || isWalletExpanded) && styles.optionRowExpanded,
+          ]}
+          onPress={() => onToggleSection(option.id)}
+        >
           <View style={styles.optionLeft}>
             {option.icon}
             <Text style={styles.optionText}>{option.label}</Text>
@@ -130,52 +210,147 @@ export const PaymentGatewayScreen: React.FC<PaymentGatewayScreenProps> = ({ navi
           <View style={styles.cardExpandedBody}>
             <Text style={styles.inputLabel}>Card Number</Text>
             <TextInput
-              style={styles.cardInput}
+              style={[
+                styles.cardInput,
+                cardNumberFocused && styles.cardInputFocused,
+                showCardNumberInvalid && styles.cardInputInvalid,
+                webNoOutline,
+              ]}
               value={cardNumber}
-              onChangeText={setCardNumber}
+              onChangeText={(value) => setCardNumber(formatCardNumber(value))}
+              onFocus={() => setCardNumberFocused(true)}
+              onBlur={() => {
+                setCardNumberFocused(false);
+                setCardNumberTouched(true);
+              }}
               keyboardType="number-pad"
-              placeholder="1234 5678 9012 3456"
+              placeholder="1234-5678-9876-4321"
               placeholderTextColor="#8D8E95"
+              maxLength={19}
             />
 
             <View style={styles.cardDualRow}>
               <View style={styles.cardHalfField}>
-                <Text style={styles.inputLabel}>Expiry</Text>
+                <Text style={[styles.inputLabel, showCvvInvalid && styles.inputLabelInvalid]}>CVV/CVC No.</Text>
                 <TextInput
-                  style={styles.cardInput}
-                  value={expiry}
-                  onChangeText={setExpiry}
-                  keyboardType="number-pad"
-                  placeholder="MM/YY"
-                  placeholderTextColor="#8D8E95"
-                />
-              </View>
-              <View style={styles.cardHalfField}>
-                <Text style={styles.inputLabel}>CVV</Text>
-                <TextInput
-                  style={styles.cardInput}
+                  style={[
+                    styles.cardInput,
+                    cvvFocused && styles.cardInputFocused,
+                    showCvvInvalid && styles.cardInputInvalid,
+                    webNoOutline,
+                  ]}
                   value={cvv}
-                  onChangeText={setCvv}
+                  onChangeText={(value) => setCvv(value.replace(/\D/g, '').slice(0, 4))}
+                  onFocus={() => setCvvFocused(true)}
+                  onBlur={() => {
+                    setCvvFocused(false);
+                    setCvvTouched(true);
+                  }}
                   keyboardType="number-pad"
-                  placeholder="***"
+                  placeholder="xxx"
                   placeholderTextColor="#8D8E95"
                   secureTextEntry
+                  maxLength={4}
                 />
+                {showCvvInvalid ? <Text style={styles.cardErrorText}>Enter valid cvv</Text> : null}
+              </View>
+              <View style={styles.cardHalfField}>
+                <Text style={[styles.inputLabel, showExpiryInvalid && styles.inputLabelInvalid]}>Valid Thru</Text>
+                <TextInput
+                  style={[
+                    styles.cardInput,
+                    expiryFocused && styles.cardInputFocused,
+                    showExpiryInvalid && styles.cardInputInvalid,
+                    webNoOutline,
+                  ]}
+                  value={expiry}
+                  onChangeText={(value) => setExpiry(formatExpiry(value))}
+                  onFocus={() => setExpiryFocused(true)}
+                  onBlur={() => {
+                    setExpiryFocused(false);
+                    setExpiryTouched(true);
+                  }}
+                  keyboardType="number-pad"
+                  placeholder="01/2024"
+                  placeholderTextColor="#8D8E95"
+                  maxLength={7}
+                />
+                {showExpiryInvalid ? <Text style={styles.cardErrorText}>Enter valid id</Text> : null}
               </View>
             </View>
 
-            <Text style={styles.inputLabel}>Name on Card</Text>
+            <Text style={[styles.inputLabel, showNameInvalid && styles.inputLabelInvalid]}>Name on Card</Text>
             <TextInput
-              style={styles.cardInput}
+              style={[
+                styles.cardInput,
+                nameFocused && styles.cardInputFocused,
+                showNameInvalid && styles.cardInputInvalid,
+                webNoOutline,
+              ]}
               value={nameOnCard}
               onChangeText={setNameOnCard}
+              onFocus={() => setNameFocused(true)}
+              onBlur={() => {
+                setNameFocused(false);
+                setNameTouched(true);
+              }}
               placeholder="Cardholder name"
               placeholderTextColor="#8D8E95"
             />
+            {showNameInvalid ? <Text style={styles.cardErrorText}>Enter valid name</Text> : null}
 
-            <Pressable style={[styles.cardPayButton, isCardFormValid && styles.cardPayButtonEnabled]}>
-              <Text style={styles.cardPayText}>Pay Now</Text>
+            <Pressable
+              style={[styles.cardPayButton, isCardFormValid && styles.cardPayButtonEnabled]}
+              disabled={!isCardFormValid}
+            >
+              <Text style={styles.cardPayText}>Send OTP</Text>
             </Pressable>
+
+            <Pressable
+              style={styles.cardSaveRow}
+              onPress={() => setSaveCardDetails((current) => !current)}
+            >
+              <View style={[styles.checkbox, saveCardDetails && styles.checkboxChecked]}>
+                {saveCardDetails ? <Ionicons name="checkmark" size={13} color="#111111" /> : null}
+              </View>
+              <Text style={styles.saveText}>Save details for future</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {isWalletExpanded ? (
+          <View style={styles.paypalExpandedBody}>
+            <Text style={[styles.inputLabel, showPaypalInvalid && styles.inputLabelInvalid]}>
+              Paypal ID
+            </Text>
+            <View style={styles.paypalRow}>
+              <TextInput
+                style={[
+                  styles.paypalInput,
+                  paypalFocused && styles.cardInputFocused,
+                  showPaypalInvalid && styles.cardInputInvalid,
+                  webNoOutline,
+                ]}
+                value={paypalId}
+                onChangeText={setPaypalId}
+                onFocus={() => setPaypalFocused(true)}
+                onBlur={() => {
+                  setPaypalFocused(false);
+                }}
+                placeholder="Enter Paypal ID"
+                placeholderTextColor="#8D8E95"
+                autoCapitalize="none"
+                autoCorrect={false}
+                selectionColor="#111111"
+              />
+              <Pressable
+                style={[styles.paypalConfirmButton, isPaypalIdValid && styles.paypalConfirmButtonEnabled]}
+                disabled={!isPaypalIdValid}
+              >
+                <Text style={styles.paypalConfirmText}>Confirm</Text>
+              </Pressable>
+            </View>
+            {showPaypalInvalid ? <Text style={styles.cardErrorText}>Enter valid id</Text> : null}
           </View>
         ) : null}
 
@@ -376,6 +551,9 @@ const styles = StyleSheet.create({
     color: '#555760',
     marginBottom: 7,
   },
+  inputLabelInvalid: {
+    color: '#D74444',
+  },
   cardInput: {
     height: 46,
     borderWidth: 1,
@@ -387,12 +565,25 @@ const styles = StyleSheet.create({
     color: '#23242A',
     marginBottom: 10,
   },
+  cardInputFocused: {
+    borderColor: '#111111',
+  },
+  cardInputInvalid: {
+    borderColor: '#D74444',
+    color: '#D74444',
+  },
   cardDualRow: {
     flexDirection: 'row',
     gap: 10,
   },
   cardHalfField: {
     flex: 1,
+  },
+  cardErrorText: {
+    ...typography.caption1,
+    color: '#D74444',
+    marginTop: -2,
+    marginBottom: 6,
   },
   cardPayButton: {
     height: 46,
@@ -409,6 +600,51 @@ const styles = StyleSheet.create({
     ...typography.subheadline,
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  cardSaveRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 10,
+  },
+  paypalExpandedBody: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+    backgroundColor: '#F7F7F9',
+    borderWidth: 0,
+  },
+  paypalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  paypalInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: '#111111',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    ...typography.callout,
+    color: '#23242A',
+    backgroundColor: '#F7F7F9',
+  },
+  paypalConfirmButton: {
+    width: 84,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#A0A1A8',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  paypalConfirmButtonEnabled: {
+    backgroundColor: '#111111',
+  },
+  paypalConfirmText: {
+    ...typography.subheadline,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
   upiChooseApp: {
     ...typography.subheadline,
