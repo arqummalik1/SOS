@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,52 +8,99 @@ import {
   Dimensions,
   Platform,
   StatusBar,
-  Image,
+  ImageBackground,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { useUser } from '../../store/UserContext';
 import { useAuth } from '../../store/AuthContext';
-import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 
 const { width } = Dimensions.get('window');
 
 interface StylePreferencesScreenProps {
-  navigation: NativeStackNavigationProp<any>;
-  route: any;
+  navigation: NativeStackNavigationProp<AuthStackParamList, 'StylePreferences'>;
+  route: RouteProp<AuthStackParamList, 'StylePreferences'>;
 }
 
-// Skin tone hex values (estimated from the 4x4 grid in design)
 const skinTones = [
   '#FFE5C4', '#FEE5B1', '#FDD59B', '#FBCB97',
   '#F4C193', '#F1BC87', '#D79F7E', '#CB7144',
   '#D79F67', '#B99468', '#95653F', '#7E4723',
   '#CB754B', '#894F2C', '#5D3316', '#2A1A12',
-];
+ ] as const;
 
-const stylesList = [
-  { id: '1', name: 'Sporty', image: require('../../../assets/images/mosaic/fashion1.jpg') },
-  { id: '2', name: 'Casual', image: require('../../../assets/images/mosaic/fashion2.jpg') },
-  { id: '3', name: 'Formal', image: require('../../../assets/images/mosaic/fashion3.jpg') },
-  { id: '4', name: 'Boho', image: require('../../../assets/images/mosaic/fashion4.jpg') },
+const styleCards = [
+  { id: 'sporty', label: 'Sporty', image: require('../../../assets/images/mosaic/fashion1.jpg') },
+  { id: 'casual', label: 'Casual', image: require('../../../assets/images/mosaic/fashion2.jpg') },
+  { id: 'formal', label: 'Formal', image: require('../../../assets/images/mosaic/fashion3.jpg') },
+  { id: 'boho', label: 'Boho', image: require('../../../assets/images/mosaic/fashion4.jpg') },
 ];
 
 /**
- * StylePreferencesScreen - Replicates "Profile setup 3.png" with 100% visual fidelity.
- * Features skin tone selection, custom color picker, and horizontal style preference scrolling.
+ * Profile setup step 3: Skin tone + style preferences.
+ * Uses route profile data and persists onboarding data before completion.
  */
 export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ navigation, route }) => {
+  const { updateProfile } = useUser();
   const { completeOnboarding } = useAuth();
+  const profileData = route.params?.profileData;
   const [selectedTone, setSelectedTone] = useState<string>(skinTones[0]);
-  const [selectedStyle, setSelectedStyle] = useState<string>('1');
+  const [selectedStyleId, setSelectedStyleId] = useState<string>(styleCards[0].id);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedStyleLabel = useMemo(
+    () => styleCards.find((card) => card.id === selectedStyleId)?.label ?? styleCards[0].label,
+    [selectedStyleId]
+  );
+
+  const hydrateDob = (value: string | undefined) => {
+    if (!value) return '';
+    return value;
+  };
 
   const handleContinue = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
+      await updateProfile({
+        name: profileData?.name ?? '',
+        height: profileData?.height ?? '',
+        weight: profileData?.weight ?? '',
+        dob: hydrateDob(profileData?.dob),
+        profileImage: profileData?.profileImage ?? null,
+        stylePreferences: [selectedStyleLabel],
+        colorPreferences: [selectedTone],
+      });
       await completeOnboarding();
     } catch (error) {
       console.error('Error completing onboarding:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await updateProfile({
+        name: profileData?.name ?? '',
+        height: profileData?.height ?? '',
+        weight: profileData?.weight ?? '',
+        dob: hydrateDob(profileData?.dob),
+        profileImage: profileData?.profileImage ?? null,
+      });
+      await completeOnboarding();
+    } catch (error) {
+      console.error('Error skipping style preferences:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -75,7 +122,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         <View style={styles.headerSection}>
           <Text style={styles.title}>Skin tone & Style Preferences</Text>
           <Text style={styles.subtitle}>
-            Personalize color and style recomendations
+            Personalize color and style recommendations
           </Text>
         </View>
 
@@ -110,7 +157,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         <View style={styles.styleSection}>
           <Text style={styles.sectionTitle}>Style preference:</Text>
           <FlatList
-            data={stylesList}
+            data={styleCards}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
@@ -119,14 +166,16 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
               <TouchableOpacity 
                 style={[
                   styles.styleCard,
-                  selectedStyle === item.id && styles.styleCardSelected
+                  selectedStyleId === item.id && styles.styleCardSelected
                 ]}
-                onPress={() => setSelectedStyle(item.id)}
+                onPress={() => setSelectedStyleId(item.id)}
                 activeOpacity={0.9}
               >
-                <Image source={item.image} style={styles.styleImage} />
+                <ImageBackground source={item.image} style={styles.styleImage} imageStyle={styles.styleImageMask}>
+                  <View style={styles.imageOverlay} />
+                </ImageBackground>
                 <View style={styles.stylePill}>
-                  <Text style={styles.stylePillText}>{item.name}</Text>
+                  <Text style={styles.stylePillText}>{item.label}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -147,15 +196,17 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
               style={styles.continueButton}
               onPress={handleContinue}
               activeOpacity={0.9}
+              disabled={isSubmitting}
             >
-              <Text style={styles.continueText}>Continue</Text>
+              {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.continueText}>Continue</Text>}
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
             style={styles.skipLink} 
             activeOpacity={0.7}
-            onPress={handleContinue}
+            onPress={handleSkip}
+            disabled={isSubmitting}
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
@@ -168,7 +219,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -206,7 +257,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...typography.subheadline,
-    color: '#333333',
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -226,7 +277,7 @@ const styles = StyleSheet.create({
   },
   toneSquare: {
     width: (width - 48 - 36) / 4,
-    height: (width - 48 - 36) / 4 * 0.7, // Rectangular logic
+    height: ((width - 48 - 36) / 4) * 0.7,
     borderRadius: 8,
   },
   toneSquareSelected: {
@@ -262,11 +313,13 @@ const styles = StyleSheet.create({
     paddingRight: 24,
   },
   styleCard: {
-    width: width * 0.65,
-    height: width * 0.85,
+    width: width * 0.58,
+    height: width * 0.82,
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#F2F2F7',
+    borderWidth: 1,
+    borderColor: '#F0F0F2',
   },
   styleCardSelected: {
     borderWidth: 3,
@@ -275,7 +328,13 @@ const styles = StyleSheet.create({
   styleImage: {
     width: '100%',
     height: '100%',
+  },
+  styleImageMask: {
     resizeMode: 'cover',
+  },
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.04)',
   },
   stylePill: {
     position: 'absolute',
@@ -322,7 +381,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
     height: 60,
-    borderRadius: 18,
+    borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',

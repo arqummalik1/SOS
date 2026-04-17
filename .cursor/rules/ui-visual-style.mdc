@@ -1,0 +1,16 @@
+---
+description: UI visual constraints for app screens
+alwaysApply: true
+---
+
+# UI Visual Style Rules
+
+- Do not use borders or stroke outlines on UI components unless explicitly requested.
+- Prefer top shadows (`shadowOffset.height` negative) for cards, inputs, chips, and elevated surfaces.
+- Keep screens responsive using dynamic sizing with `useWindowDimensions()` and proportional calculations.
+- Use global typography tokens from `typography` for all text styles.
+- For text inputs, make the entire input container tappable/focusable and avoid partial touch targets.
+- For text inputs on web, remove default browser focus outlines and ensure the input fills the full container height/width.
+- When an input creates chips/tags, pressing Enter should commit the value into a removable chip.
+- For pink/lilac UI surfaces, use a shared global gradient token (do not hardcode one-off pink shades).
+- Prefer reusable gradient tokens from the theme layer (e.g. `src/theme/gradients.ts`) and apply them consistently across cards/components.

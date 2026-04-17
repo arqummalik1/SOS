@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   SafeAreaView,
   ScrollView,
@@ -8,342 +7,433 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontNames } from '../../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CalendarStackParamList } from '../../navigation/CalendarStackNavigator';
 import { typography } from '../../theme/typography';
-
-const CLOTHING_ITEMS = [
-  { id: '1', image: require('../../../assets/VirtualTryOnSecond/image1.png'), name: 'Red Coat' },
-  { id: '2', image: require('../../../assets/VirtualTryOnSecond/image2.png'), name: 'Black Dress' },
-  { id: '3', image: require('../../../assets/VirtualTryOnSecond/image3.png'), name: 'Turtleneck' },
-  { id: '4', image: require('../../../assets/VirtualTryOnSecond/image4.png'), name: 'Boots' },
-];
-
-const ITEM_CARDS = [
-  { id: '1', name: 'Red Wool Coat', brand: 'Zara', price: '$129', rating: 4.8 },
-  { id: '2', name: 'Black Midi Dress', brand: 'H&M', price: '$59', rating: 4.5 },
-  { id: '3', name: 'Cashmere Turtleneck', brand: 'Uniqlo', price: '$79', rating: 4.9 },
-];
-
-const SCORE_CATEGORIES = [
-  { label: 'Color Harmony', score: 92 },
-  { label: 'Style Match', score: 88 },
-  { label: 'Occasion Fit', score: 95 },
-];
+import { gradients } from '../../theme';
 
 type VirtualTryOnSecondScreenProps = {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<CalendarStackParamList, 'VirtualTryOnSecond'>;
+  route: RouteProp<CalendarStackParamList, 'VirtualTryOnSecond'>;
 };
 
-export const FirstScreen: React.FC<VirtualTryOnSecondScreenProps> = ({ navigation }) => {
+const HERO_IMAGE = require('../../../SOS-FigmaDesigns/VirtualTryOnSecond/BigImage.png');
+const THUMBNAILS = [
+  { id: '1', image: require('../../../SOS-FigmaDesigns/VirtualTryOnSecond/image1.png') },
+  { id: '2', image: require('../../../SOS-FigmaDesigns/VirtualTryOnSecond/image2.png') },
+  { id: '3', image: require('../../../SOS-FigmaDesigns/VirtualTryOnSecond/image3.png') },
+  { id: '4', image: require('../../../SOS-FigmaDesigns/VirtualTryOnSecond/image4.png') },
+];
+const ITEM_ROWS = ['Top', 'Bottom', 'Shoe', 'Accessories'] as const;
+
+export const VirtualTryOnSecondScreen: React.FC<VirtualTryOnSecondScreenProps> = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
+  const [selectedThumbId, setSelectedThumbId] = useState(route.params?.selectedOutfitId ?? '1');
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [shuffleOn, setShuffleOn] = useState(false);
   const [starred, setStarred] = useState(false);
+  const [calendarAdded, setCalendarAdded] = useState(false);
+  const [refreshState, setRefreshState] = useState<Record<string, boolean>>({});
 
-  const onSaveOutfit = () => {
-    navigation.navigate('OutfitComplete');
+  const horizontalPadding = Math.max(14, Math.min(24, width * 0.055));
+  const contentWidth = width - horizontalPadding * 2;
+  const heroHeight = contentWidth * (437 / 312);
+  const thumbGap = 16;
+  const thumbWidth = Math.max(96, Math.min(116, contentWidth * 0.35));
+  const saveBtnWidth = Math.min(220, contentWidth * 0.62);
+  const scoreCardsWidthExpanded = saveBtnWidth * 1.2 * 1.2 * 0.9 * 1.05;
+  const scoreCardsWidth = Math.min(contentWidth, scoreCardsWidthExpanded);
+  const scoreCardPadV = Math.round(10 * 1.1);
+  const scoreCardPadH = Math.round(12 * 1.1);
+  const scoreCardBlockSpacing = Math.round(8 * 1.1);
+  const scoreTrackHeight = Math.round(9 * 1.1);
+  const weatherIconSize = Math.round(14 * 1.1);
+
+  const weatherScore = useMemo(() => 85, []);
+  const occasionScore = useMemo(() => 90, []);
+
+  const toggleRefreshRow = (label: string) => {
+    setRefreshState((prev) => ({ ...prev, [label]: !prev[label] }));
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.gray[100]} />
-      
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={18} color="#1A1A1A" />
-            <Text style={styles.backText}>Back</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#F3F3F3" />
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={[
+          styles.content,
+          { paddingHorizontal: horizontalPadding, paddingBottom: 128 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={18} color="#1A1A1A" />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.heading}>Your outfit is ready</Text>
+        <Text style={styles.subheading}>Lorem Ipsum El Dolor alpus golum</Text>
+
+        <View style={[styles.heroWrap, { width: contentWidth, height: heroHeight }]}>
+          <Image source={HERO_IMAGE} style={styles.heroImage} resizeMode="cover" />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.thumbScrollContent, { gap: thumbGap }]}
+          style={styles.thumbStrip}
+        >
+          {THUMBNAILS.map((thumb) => {
+            const isSelected = selectedThumbId === thumb.id;
+            return (
+              <TouchableOpacity
+                key={thumb.id}
+                style={[styles.thumbCard, { width: thumbWidth, height: thumbWidth * 0.83 }]}
+                onPress={() => setSelectedThumbId(thumb.id)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={gradients.pinkFade.colors}
+                  start={gradients.pinkFade.start}
+                  end={gradients.pinkFade.end}
+                  style={[styles.thumbGradient, isSelected && styles.thumbGradientSelected]}
+                >
+                  <View style={styles.thumbInnerTile}>
+                    <Image source={thumb.image} style={styles.thumbImage} resizeMode="contain" />
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.iconRow}>
+          <View style={styles.iconGroup}>
+            <TouchableOpacity style={styles.groupIconBtn} onPress={() => setLiked((v) => !v)} activeOpacity={0.85}>
+              <Ionicons name={liked ? 'heart' : 'heart-outline'} size={27} color="#111111" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.groupIconBtn} onPress={() => setDisliked((v) => !v)} activeOpacity={0.85}>
+              <Ionicons name={disliked ? 'thumbs-down' : 'thumbs-down-outline'} size={27} color="#111111" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.iconGroup}>
+            <TouchableOpacity style={styles.groupIconBtn} onPress={() => setSaved((v) => !v)} activeOpacity={0.85}>
+              <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={27} color="#111111" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.groupIconBtn} onPress={() => setShuffleOn((v) => !v)} activeOpacity={0.85}>
+              <Ionicons name="shuffle-outline" size={27} color="#111111" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.singleIconBtn} onPress={() => setStarred((v) => !v)} activeOpacity={0.85}>
+            <Ionicons name={starred ? 'star' : 'star-outline'} size={27} color="#111111" />
           </TouchableOpacity>
 
-          <Text style={styles.heading}>Virtual Try-On</Text>
-
-          <View style={styles.bigImageContainer}>
-            <Image 
-              source={require('../../../assets/VirtualTryOnSecond/BigImage.png')} 
-              style={styles.bigImage} 
-              resizeMode="cover"
-            />
-          </View>
-
-          <View style={styles.clothingScroll}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {CLOTHING_ITEMS.map((item) => (
-                <View key={item.id} style={styles.clothingItem}>
-                  <Image source={item.image} style={styles.clothingImage} resizeMode="cover" />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View style={styles.actionIconsRow}>
-            <View style={styles.leftIcons}>
-              <TouchableOpacity 
-                style={[styles.iconBtn, liked && styles.iconBtnActive]} 
-                onPress={() => setLiked(!liked)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name={liked ? "heart" : "heart-outline"} size={24} color={liked ? "#FF4B4B" : "#333"} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.iconBtn, disliked && styles.iconBtnActive]} 
-                onPress={() => setDisliked(!disliked)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="thumbs-down-outline" size={24} color={disliked ? "#666" : "#333"} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.rightIcons}>
-              <TouchableOpacity 
-                style={[styles.iconBtn, saved && styles.iconBtnActive]} 
-                onPress={() => setSaved(!saved)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={24} color={saved ? "#B79CBC" : "#333"} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.iconBtn, starred && styles.iconBtnActive]} 
-                onPress={() => setStarred(!starred)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name={starred ? "star" : "star-outline"} size={24} color={starred ? "#FFD700" : "#333"} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.iconBtn} activeOpacity={0.85}>
-                <Ionicons name="calendar-outline" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.itemCardsSection}>
-            <Text style={styles.sectionTitle}>Items in this Look</Text>
-            {ITEM_CARDS.map((item) => (
-              <View key={item.id} style={styles.itemCard}>
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemName}>{item.name}</Text>
-                  <Text style={styles.itemBrand}>{item.brand}</Text>
-                  <View style={styles.itemRating}>
-                    <Ionicons name="star" size={14} color="#FFD700" />
-                    <Text style={styles.ratingText}>{item.rating}</Text>
-                  </View>
-                </View>
-                <Text style={styles.itemPrice}>{item.price}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={styles.outfitScoreSection}>
-            <Text style={styles.sectionTitle}>Outfit Score</Text>
-            <View style={styles.scoreCards}>
-              {SCORE_CATEGORIES.map((cat) => (
-                <View key={cat.label} style={styles.scoreCard}>
-                  <Text style={styles.scoreLabel}>{cat.label}</Text>
-                  <View style={styles.progressBarContainer}>
-                    <View style={[styles.progressBar, { width: `${cat.score}%` }]} />
-                  </View>
-                  <Text style={styles.scoreValue}>{cat.score}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.saveOutfitBtn} onPress={onSaveOutfit} activeOpacity={0.9}>
-            <Text style={styles.saveOutfitText}>Save Outfit</Text>
+          <TouchableOpacity style={styles.singleIconBtn} onPress={() => setCalendarAdded((v) => !v)} activeOpacity={0.85}>
+            <Ionicons name={calendarAdded ? 'calendar' : 'calendar-outline'} size={27} color="#111111" />
           </TouchableOpacity>
         </View>
+
+        <Text style={styles.sectionTitle}>Item cards:</Text>
+        <View style={styles.itemRows}>
+          {ITEM_ROWS.map((label) => (
+            <View key={label} style={styles.itemRow}>
+              <View style={styles.itemLabelWrap}>
+                <Text style={styles.itemLabel}>{label}</Text>
+              </View>
+              <TouchableOpacity style={styles.itemActionBtn} onPress={() => toggleRefreshRow(label)} activeOpacity={0.85}>
+                <Ionicons name={refreshState[label] ? 'refresh' : 'refresh-outline'} size={15} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        <Text style={[styles.sectionTitle, styles.outfitScoreTitle]}>Outfit match score:</Text>
+        <View style={[styles.scoreColumn, { width: scoreCardsWidth }]}>
+          <LinearGradient
+            colors={gradients.pinkFade.colors}
+            start={gradients.pinkFade.start}
+            end={gradients.pinkFade.end}
+            style={[
+              styles.scoreCard,
+              { paddingVertical: scoreCardPadV, paddingHorizontal: scoreCardPadH },
+            ]}
+          >
+            <View style={[styles.weatherRow, { marginBottom: scoreCardBlockSpacing }]}>
+              <Ionicons name="sunny-outline" size={weatherIconSize} color="#111111" />
+              <Text style={styles.weatherText}>27°C 85% Weather appropriate</Text>
+            </View>
+            <View style={[styles.scoreTrack, { height: scoreTrackHeight }]}>
+              <LinearGradient
+                colors={[...gradients.scoreProgress.colors]}
+                start={gradients.scoreProgress.start}
+                end={gradients.scoreProgress.end}
+                style={[styles.scoreFill, { width: `${weatherScore}%` }]}
+              />
+            </View>
+          </LinearGradient>
+          <LinearGradient
+            colors={gradients.pinkFade.colors}
+            start={gradients.pinkFade.start}
+            end={gradients.pinkFade.end}
+            style={[
+              styles.scoreCard,
+              { paddingVertical: scoreCardPadV, paddingHorizontal: scoreCardPadH },
+            ]}
+          >
+            <Text style={[styles.scoreLabel, { marginBottom: scoreCardBlockSpacing }]}>
+              {`${occasionScore}% Occasion match`}
+            </Text>
+            <View style={[styles.scoreTrack, { height: scoreTrackHeight }]}>
+              <LinearGradient
+                colors={[...gradients.scoreProgress.colors]}
+                start={gradients.scoreProgress.start}
+                end={gradients.scoreProgress.end}
+                style={[styles.scoreFill, { width: `${occasionScore}%` }]}
+              />
+            </View>
+          </LinearGradient>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveBtn, { width: saveBtnWidth }]}
+          onPress={() => navigation.navigate('SwitchTheItem')}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.saveBtnText}>Save outfit</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-export const VirtualTryOnSecondScreen = FirstScreen;
-
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.gray[100],
-  },
-  scrollView: {
-    flex: 1,
+    backgroundColor: '#F3F3F3',
   },
   content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 100,
+    paddingTop: 10,
   },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
     paddingVertical: 6,
-    marginLeft: -4,
+    marginLeft: -2,
+    marginBottom: 4,
   },
   backText: {
-    marginLeft: 4,
-    ...typography.body,
+    ...typography.callout,
     color: '#1F1F1F',
   },
   heading: {
-    marginTop: 16,
-    textAlign: 'center',
     ...typography.title1,
+    textAlign: 'center',
     color: '#111111',
+    fontSize: 34,
+    lineHeight: 38,
   },
-  bigImageContainer: {
-    marginTop: 24,
-    width: '100%',
-    height: 570,
-    borderRadius: 24,
+  subheading: {
+    ...typography.caption2,
+    textAlign: 'center',
+    color: '#515151',
+    marginTop: 4,
+  },
+  heroWrap: {
+    marginTop: 18,
+    borderRadius: 25,
     overflow: 'hidden',
-    backgroundColor: 'transparent',
+    alignSelf: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  bigImage: {
-    width: '100%',
-    height: '100%',
-    borderWidth: 0,
-    backgroundColor: 'transparent',
+  heroImage: {
+    position: 'absolute',
+    width: '106%',
+    height: '106%',
+    left: '-3%',
+    top: '-3%',
   },
-  clothingScroll: {
-    marginTop: 20,
+  thumbStrip: {
+    marginTop: 10,
   },
-  clothingItem: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+  thumbScrollContent: {
+    paddingRight: 8,
+  },
+  thumbCard: {
+    borderRadius: 10,
     overflow: 'hidden',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
-  clothingImage: {
-    width: '100%',
-    height: '100%',
-  },
-  actionIconsRow: {
-    marginTop: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  thumbGradient: {
+    flex: 1,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  leftIcons: {
+  thumbGradientSelected: {
+    opacity: 0.95,
+  },
+  thumbInnerTile: {
+    width: '56%',
+    height: '56%',
+    borderRadius: 8,
+    backgroundColor: '#EBE6EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbImage: {
+    width: '74%',
+    height: '74%',
+  },
+  iconRow: {
+    marginTop: 12,
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
-  rightIcons: {
+  iconGroup: {
+    width: 110,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F5F5F5',
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'space-evenly',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  iconBtn: {
+  groupIconBtn: {
+    width: 52,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  singleIconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconBtnActive: {
-    backgroundColor: '#F0F0F0',
-  },
-  itemCardsSection: {
-    marginTop: 28,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.09,
+    shadowRadius: 4,
+    elevation: 1,
   },
   sectionTitle: {
-    ...typography.title3,
-    color: '#111111',
-    marginBottom: 16,
+    ...typography.title2,
+    color: '#1E1E1E',
+    marginTop: 18,
+    marginBottom: 8,
   },
-  itemCard: {
+  itemRows: {
+    gap: 8,
+  },
+  itemRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 8,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  itemInfo: {
+  itemLabelWrap: {
     flex: 1,
-  },
-  itemName: {
-    ...typography.subheadline,
-    color: '#111111',
-  },
-  itemBrand: {
-    ...typography.footnote,
-    color: '#666666',
-    marginTop: 2,
-  },
-  itemRating: {
-    flexDirection: 'row',
+    height: 31,
+    borderRadius: 8,
+    backgroundColor: '#EFEFEF',
     alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  ratingText: {
-    ...typography.footnote,
-    color: '#666666',
+  itemLabel: {
+    ...typography.subheadline,
+    color: '#222222',
   },
-  itemPrice: {
-    ...typography.headline,
-    color: '#111111',
-  },
-  outfitScoreSection: {
-    marginTop: 28,
-  },
-  scoreCards: {
-    gap: 12,
-  },
-  scoreCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  scoreLabel: {
-    ...typography.footnote,
-    color: '#333333',
-    marginBottom: 8,
-  },
-  progressBarContainer: {
-    height: 8,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#B79CBC',
-    borderRadius: 4,
-  },
-  scoreValue: {
-    ...typography.headline,
-    color: '#111111',
-    textAlign: 'right',
-  },
-  saveOutfitBtn: {
-    marginTop: 32,
-    marginHorizontal: 40,
-    height: 52,
-    borderRadius: 28,
-    backgroundColor: '#111111',
+  itemActionBtn: {
+    width: 36,
+    height: 31,
+    borderRadius: 7,
+    backgroundColor: '#050505',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveOutfitText: {
-    ...typography.body,
+  outfitScoreTitle: {
+    alignSelf: 'stretch',
+    textAlign: 'left',
+  },
+  scoreColumn: {
+    alignSelf: 'flex-start',
+    gap: 8,
+  },
+  scoreCard: {
+    width: '100%',
+    alignItems: 'stretch',
+    borderRadius: 12,
+  },
+  weatherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  weatherText: {
+    ...typography.footnote,
+    color: '#1D1D1D',
+  },
+  scoreLabel: {
+    ...typography.footnote,
+    color: '#1D1D1D',
+  },
+  scoreTrack: {
+    alignSelf: 'center',
+    width: '94%',
+    alignItems: 'flex-start',
+    borderRadius: 999,
+    backgroundColor: '#D8D4DB',
+    overflow: 'hidden',
+  },
+  scoreFill: {
+    alignSelf: 'flex-start',
+    height: '100%',
+    borderRadius: 999,
+  },
+  saveBtn: {
+    marginTop: 14,
+    alignSelf: 'center',
+    height: 39,
+    borderRadius: 12,
+    backgroundColor: '#0D0D0D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    ...typography.subheadline,
     color: '#FFFFFF',
   },
 });

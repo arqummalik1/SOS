@@ -9,14 +9,26 @@ import {
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
+
+/** Calendar stack screens where the floating tab bar must not cover the UI (e.g. full-screen camera). */
+const CALENDAR_SCREENS_HIDE_TAB_BAR = new Set<string>(['CalendarAddItemCamera']);
 
 /**
  * CustomTabBar - Replicates the "Liquid Glass" bar with 5 circular buttons.
  * As seen in the user provided reference image.
  */
 export const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+  const currentTabRoute = state.routes[state.index];
+  if (currentTabRoute.name === 'Calendar') {
+    const nestedName = getFocusedRouteNameFromRoute(currentTabRoute);
+    if (nestedName != null && CALENDAR_SCREENS_HIDE_TAB_BAR.has(nestedName)) {
+      return null;
+    }
+  }
+
   return (
     <View style={styles.container}>
       <BlurView intensity={60} tint="light" style={styles.blurContainer}>

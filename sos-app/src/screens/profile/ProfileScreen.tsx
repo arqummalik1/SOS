@@ -44,6 +44,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     { icon: 'person-outline', label: 'Edit Profile', action: () => navigation.navigate('EditProfile') },
     { icon: 'settings-outline', label: 'Settings', action: () => navigation.navigate('Settings') },
     { icon: 'notifications-outline', label: 'Notifications', action: () => navigation.navigate('Notifications') },
+    { icon: 'card-outline', label: 'Subscription', action: () => navigation.navigate('Subscription') },
     { icon: 'lock-closed-outline', label: 'Privacy', action: () => navigation.navigate('Privacy') },
     { icon: 'help-circle-outline', label: 'Help', action: () => navigation.navigate('Help') },
     { icon: 'log-out-outline', label: 'Logout', danger: true, action: handleLogout },
