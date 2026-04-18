@@ -8,6 +8,13 @@ const normalizeBaseUrl = (value: string | undefined): string => {
   return value.trim().replace(/\/+$/, '');
 };
 
+/**
+ * Production currently returns 404 for `GET /wardrobe/outfits` and `GET /wardrobe/saved-outfits`
+ * until those routes ship. Set `EXPO_PUBLIC_WARDROBE_OUTFIT_API_ENABLED=true` when the backend exposes them.
+ */
+export const wardrobeOutfitRemoteApiEnabled =
+  process.env.EXPO_PUBLIC_WARDROBE_OUTFIT_API_ENABLED === 'true';
+
 export const API_CONFIG = {
   baseUrl: normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
   timeoutMs: Number(process.env.EXPO_PUBLIC_API_TIMEOUT_MS ?? 15000),

@@ -147,7 +147,7 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
   }, [folders, selectedFilter, searchQuery]);
 
   const openFolder = (folder: WardrobeFolder) => {
-    navigation.navigate('FolderDetail', {
+    navigation.navigate('MyItems', {
       folderId: folder.id,
       folderName: folder.name,
       folder,

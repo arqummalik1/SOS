@@ -21,7 +21,7 @@
 |------|------|------------------|
 | **UI + API UX** | `.cursor/rules/ui-visual-style.mdc` | No random borders; top shadows; `useWindowDimensions`; **typography** tokens; **gradient** tokens from theme; inputs fully tappable; **every API**: loading, disabled submit, success/error feedback, user-safe messages |
 | **Production + memory** | `.cursor/rules/sos-production-engineering.mdc` | **Scalable** production RN; **no blind guesses**—ask user when ambiguous; **clarify → plan → build**; **todos** for multi-step work; **`src/api` + `src/services` only`** for HTTP; read/update **`memory.md`**; **Mermaid flowcharts only** for **in-app user flows** (not tiny refactors); **honest** trade-offs |
-| **Official API doc + flows** | `.cursor/rules/styleonspot-api-spec.mdc` + **`docs/API_INTEGRATION_GUIDE.md`** | Canonical API viewer URL + plain-English **what/why/how** per integrated endpoint; agents must consult before API work |
+| **Official API doc + flows** | **`docs/SOS_BACKEND_API_REFERENCE.md`** + `.cursor/rules/sos-backend-api-reference.mdc` + `.cursor/rules/styleonspot-api-spec.mdc` + **`docs/API_INTEGRATION_GUIDE.md`** + **`docs/completeAPIDocumentation.html`** | Full **endpoint catalog** (bodies, auth, cURL, integration status) + Cursor rule summary + plain-English guide + offline Hoppscotch HTML |
 
 ---
 
@@ -29,7 +29,7 @@
 
 ```
 api/          → config, client, endpoints, errors, tokenManager, types (single HTTP layer)
-services/     → authService, userService, wardrobeService, wardrobeFolderService, wardrobeItemService, paymentService (typed API calls)
+services/     → authService, userService, wardrobeService, wardrobeFolderService, wardrobeItemService, virtualTryOnService, paymentService (typed API calls)
 store/        → AuthContext, UserContext, OutfitContext (+ others as added)
 screens/      → auth/*, onboarding/*, home/*, wardrobe/*, tryon/*
 navigation/   → RootNavigator, AuthNavigator, WardrobeStackNavigator, …
@@ -80,10 +80,11 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 
 | Area | Paths |
 |------|--------|
-| **Auth** | `/auth/send-otp`, `resend-otp`, `verify-otp`, `refresh-token`, `logout` |
-| **Onboarding** | `/onboarding/status`, `profile-image`, `full-body-image`, `basic-details`, **`body-shape`**, **`skin-tone-style`**, **`complete`** (`POST /onboarding/complete`, final step) |
+| **Auth** | `/auth/send-otp`, `resend-otp`, `verify-otp`, `refresh-token`; session end **`POST /logout`** (doc); **`GET/DELETE /sessions`** in HTML export — **not** in `endpoints.ts` until product adds session management |
+| **Onboarding** | **`GET /onboarding/options`** (in HTML export; not wired in app yet), `/onboarding/status`, `profile-image`, `full-body-image`, `basic-details`, **`body-shape`**, **`skin-tone-style`**, **`complete`** (`POST /onboarding/complete`, final step) |
 | **User / profile** | **`GET` / `PUT` `/profile`** (Hoppscotch), `POST /logout` (session end), `.../users/me/profile-setup` (legacy setup POST) |
 | **Wardrobe** | `/wardrobe/outfits`, `/wardrobe/saved-outfits`, **`/wardrobe/folders`** (GET list, POST create, GET/PUT/DELETE `.../folders/:id`), **`/wardrobe/items`** (GET list + filters, GET `.../items/:id`, POST multipart create, PUT multipart update, DELETE `.../items/:id`), **`POST .../items/:id/image`**, **`GET /wardrobe/search`** (`query`, `per_page`) |
+| **Virtual try-on** | **`/virtual-tryon`** (GET list, POST initiate), **`/virtual-tryon/:id`** (GET status, DELETE), **`.../react`**, **`.../rate`**, **`.../regenerate`**, **`.../lookbook`**, **`.../schedule`** — see `virtualTryOnService.ts` + `VirtualTryOnScreen.tsx` |
 | **Payment** | `/payments/...` (UPI, card, etc.) |
 
 ---
@@ -93,6 +94,7 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 - **`UserContext`**: uses **`useAuth()`**. Loads **`GET /users/me`** only when **`isAuthenticated && isOnboarded`**. Otherwise hydrates from AsyncStorage. **403/NOT_FOUND** on profile → warn, keep local data.
 - **`OutfitContext`**: wardrobe loads only when **`isAuthenticated && isOnboarded`**.
 - **`wardrobeService`**: on **NOT_FOUND** or **FORBIDDEN** for list endpoints → returns **`[]`** + console warn (backend may not expose those routes yet).
+- **`Wardrobe item category` (production):** validated enums are the **wardrobe** set (`top`, `bottom`, `outerwear`, `dress`, …) — **not** try-on plural values (`tops`, `bottoms`). **`wardrobeItemService.normalizeWardrobeItemCategory`** maps synonyms before POST/PUT. **`PUT /wardrobe/items/:id`** must mirror Hoppscotch: **`folder_id`**, **`subcategory`**, **`product_url`**, **`is_favorite`**, and **all** **`occasions[]` / `seasons[]`** from the server unless the user changes the dropdown (see `EditItemDetailsScreen` `editPutSnapshotRef`). **`notify`** uses **`window.alert` on web** for visible feedback.
 
 ---
 
@@ -142,10 +144,13 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 | Concern | File(s) |
 |---------|---------|
 | Endpoints | `sos-app/src/api/endpoints.ts` |
-| API integration narrative | **`docs/API_INTEGRATION_GUIDE.md`** (official viewer: see **`styleonspot-api-spec.mdc`**) |
+| Backend API catalog (bodies, headers, tokens, status) | **`docs/SOS_BACKEND_API_REFERENCE.md`** |
+| API integration narrative | **`docs/API_INTEGRATION_GUIDE.md`** |
+| Cursor API rules | **`.cursor/rules/sos-backend-api-reference.mdc`**, **`.cursor/rules/styleonspot-api-spec.mdc`** |
 | HTTP client | `sos-app/src/api/client.ts`, `errors.ts`, `config.ts` |
 | User + onboarding HTTP | `sos-app/src/services/userService.ts` |
 | Wardrobe items HTTP | `sos-app/src/services/wardrobeItemService.ts` |
+| Virtual try-on HTTP | `sos-app/src/services/virtualTryOnService.ts`, `VirtualTryOnScreen.tsx`, `virtualTryOnRouteParams.ts` |
 | Auth HTTP | `sos-app/src/services/authService.ts` |
 | Auth state | `sos-app/src/store/AuthContext.tsx` |
 | User / outfit fetch gates | `sos-app/src/store/UserContext.tsx`, `OutfitContext.tsx` |
@@ -155,6 +160,7 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 | Skin + style UI | `StylePreferencesScreen.tsx` |
 | Basic details | `ProfileSetupScreen.tsx` |
 | Toasts | `sos-app/src/utils/notify.ts` |
+| **App navigation (route names + Mermaid)** | **`docs/NAVIGATION_FLOWCHART.md`** |
 
 ---
 
@@ -169,4 +175,4 @@ npm run start            # or npm run start:dev with dev client installed
 
 ---
 
-**Last updated:** 2026-04-18 — added **`docs/API_INTEGRATION_GUIDE.md`** (per-endpoint what/why/how + user journeys) and **`.cursor/rules/styleonspot-api-spec.mdc`** (official API viewer URL). Wardrobe **items**/**folders**, profile, onboarding, auth as previously noted.
+**Last updated:** 2026-04-18 — **`docs/NAVIGATION_FLOWCHART.md`**: full route/screen map (Root, Auth, tabs, stacks). Wardrobe **PUT** parity + **`normalizeWardrobeItemCategory`**; **`notify`** web path; **`errors.extractServerMessage`** nested Laravel shapes. See **`docs/SOS_BACKEND_API_REFERENCE.md`**, wardrobe, profile, onboarding, auth.

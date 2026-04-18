@@ -8,6 +8,7 @@ import { OutfitDetailScreen } from '../screens/outfit/OutfitDetailScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { VirtualTryOnScreen } from '../screens/tryon/VirtualTryOnScreen';
 import type { EditItemDetailsParams } from './wardrobeNavParams';
+import type { VirtualTryOnRouteParams } from './virtualTryOnRouteParams';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
@@ -16,7 +17,7 @@ export type HomeStackParamList = {
   EditItemDetails: EditItemDetailsParams | undefined;
   OutfitDetail: { outfit: any };
   Notifications: undefined;
-  VirtualTryOn: { outfit?: any };
+  VirtualTryOn: VirtualTryOnRouteParams | undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();

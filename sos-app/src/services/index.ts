@@ -4,3 +4,4 @@ export * from './userService';
 export * from './wardrobeService';
 export * from './wardrobeFolderService';
 export * from './wardrobeItemService';
+export * from './virtualTryOnService';

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -23,7 +24,13 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          // Web: detaching inactive screens sets aria-hidden while focus can remain on the modal shutter.
+          detachInactiveScreens: Platform.OS === 'web' ? false : undefined,
+        }}
+      >
         {!state.isOnboarded ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : (

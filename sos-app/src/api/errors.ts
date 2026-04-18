@@ -61,22 +61,46 @@ const userSafeMessageFromServerPayload = (payload: unknown): string | undefined 
   return undefined;
 };
 
-const extractServerMessage = (payload: unknown): string | undefined => {
-  if (!payload || typeof payload !== 'object') {
+const GENERIC_SERVER_MESSAGES = new Set(
+  ['validation error', 'the given data was invalid.', 'bad request'].map((s) => s.toLowerCase())
+);
+
+const firstStringFromFieldBag = (bag: unknown): string | undefined => {
+  if (!bag || typeof bag !== 'object') {
+    return undefined;
+  }
+  for (const value of Object.values(bag as Record<string, unknown>)) {
+    if (Array.isArray(value)) {
+      const hit = value.find((v) => typeof v === 'string' && v.trim().length > 0);
+      if (typeof hit === 'string') {
+        return hit.trim();
+      }
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
+};
+
+const extractServerMessage = (payload: unknown, depth = 0): string | undefined => {
+  if (!payload || typeof payload !== 'object' || depth > 6) {
     return undefined;
   }
 
   const source = payload as Record<string, unknown>;
-  const candidate = source.message ?? source.error ?? source.detail;
-  if (typeof candidate === 'string' && candidate.trim().length > 0) {
-    const normalized = candidate.trim();
-    if (normalized.toLowerCase() !== 'validation error') {
-      return normalized;
-    }
+
+  const fromErrors = firstStringFromFieldBag(source.errors);
+  if (fromErrors) {
+    return fromErrors;
   }
 
   const data = source.data;
   if (data && typeof data === 'object') {
+    const fromDataFields = firstStringFromFieldBag(data);
+    if (fromDataFields) {
+      return fromDataFields;
+    }
     const entries = Object.values(data as Record<string, unknown>);
     for (const value of entries) {
       if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim().length > 0) {
@@ -88,9 +112,23 @@ const extractServerMessage = (payload: unknown): string | undefined => {
     }
   }
 
-  return typeof candidate === 'string' && candidate.trim().length > 0
-    ? candidate.trim()
-    : undefined;
+  const candidate = source.message ?? source.error ?? source.detail;
+  if (typeof candidate === 'string' && candidate.trim().length > 0) {
+    const normalized = candidate.trim();
+    if (!GENERIC_SERVER_MESSAGES.has(normalized.toLowerCase())) {
+      return normalized;
+    }
+  }
+
+  const details = source.details;
+  if (details && typeof details === 'object') {
+    const nested = extractServerMessage(details, depth + 1);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : undefined;
 };
 
 /** Nginx / proxies often return HTML bodies for 413 instead of JSON. */

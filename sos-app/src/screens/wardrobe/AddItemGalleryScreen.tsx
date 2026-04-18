@@ -22,6 +22,16 @@ import { logSosError } from '../../utils/logSosError';
 
 const LOG = '[SOS_ADD_ITEM_GALLERY]';
 
+const blurActiveElementIfWeb = () => {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') {
+    return;
+  }
+  const el = document.activeElement;
+  if (el && el instanceof HTMLElement) {
+    el.blur();
+  }
+};
+
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
 const SPACING = 12;
@@ -47,6 +57,7 @@ export const AddItemGalleryScreen: React.FC = () => {
   const openEditorWithImage = (imageUri: string) => {
     try {
       console.log(`${LOG} open EditItemDetails (create)`);
+      blurActiveElementIfWeb();
       navigation.navigate('Main', {
         screen: 'Wardrobe',
         params: {
@@ -54,7 +65,12 @@ export const AddItemGalleryScreen: React.FC = () => {
           params: { mode: 'create', imageUri, folderId: route.params?.folderId },
         },
       });
-      navigation.goBack();
+      const dismissDelayMs = Platform.OS === 'web' ? 320 : 180;
+      setTimeout(() => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        }
+      }, dismissDelayMs);
     } catch (error) {
       logSosError(LOG, 'navigate to EditItemDetails', error);
       notify({ type: 'error', message: 'Could not open the item editor. Try again.' });

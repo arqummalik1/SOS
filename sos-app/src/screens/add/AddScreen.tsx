@@ -10,8 +10,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontNames, typography } from '../../theme';
+import { navigateToAddItemCamera, navigateToAddItemGallery } from '../../navigation/navigateToRootScreen';
+import { notify } from '../../utils/notify';
 
 interface AddScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -42,7 +45,21 @@ const ADD_OPTIONS = [
 ];
 
 export const AddScreen: React.FC<AddScreenProps> = ({ navigation }) => {
+  const navRoot = navigation as unknown as NavigationProp<ParamListBase>;
+
   const handleOptionPress = (action: string) => {
+    if (action === 'AddItemCamera') {
+      if (!navigateToAddItemCamera(navRoot)) {
+        notify({ type: 'error', message: 'Could not open the camera. Close this screen and try again.' });
+      }
+      return;
+    }
+    if (action === 'AddItemGallery') {
+      if (!navigateToAddItemGallery(navRoot)) {
+        notify({ type: 'error', message: 'Could not open the gallery. Close this screen and try again.' });
+      }
+      return;
+    }
     navigation.navigate(action);
   };
 

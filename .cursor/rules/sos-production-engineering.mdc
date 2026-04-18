@@ -24,7 +24,7 @@ Treat **sos-app** as **production software**: **highly scalable**, maintainable,
 
 ## Context you must use
 
-- **`.cursor/rules/*.mdc`**, this file, and **`memory.md`** (repo root) for handoff.  
+- **`.cursor/rules/*.mdc`** (including **`sos-backend-api-reference.mdc`** for HTTP contracts), this file, and **`memory.md`** (repo root) for handoff.  
 - **API contracts:** official Style On Spot API viewer (**`styleonspot-api-spec.mdc`**) and **`docs/API_INTEGRATION_GUIDE.md`** — read before changing or adding HTTP integrations.  
 - **Repository search**, open files, conversation history. Official **Expo / RN** docs or user-provided **Context7** / links **over guesswork**.
 

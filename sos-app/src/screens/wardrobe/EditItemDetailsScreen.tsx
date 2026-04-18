@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -21,7 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { typography } from '../../theme/typography';
 import { SOSButton } from '../../components/SOSButton';
 import type { EditItemDetailsParams } from '../../navigation/wardrobeNavParams';
-import { wardrobeItemService } from '../../services/wardrobeItemService';
+import { normalizeWardrobeItemCategory, wardrobeItemService } from '../../services/wardrobeItemService';
 import { wardrobeFolderService } from '../../services/wardrobeFolderService';
 import { ApiError } from '../../api/errors';
 import { notify } from '../../utils/notify';
@@ -33,6 +33,16 @@ const { width } = Dimensions.get('window');
 
 type EditItemDetailsScreenProps = {
   navigation: NativeStackNavigationProp<any>;
+};
+
+/** Mirrors server fields we must resend on PUT so Laravel receives the same shape as Hoppscotch. */
+type EditPutSnapshot = {
+  folderId: string;
+  subcategory: string;
+  productUrl: string;
+  isFavorite: boolean;
+  seasonsApi: string[];
+  occasionsApi: string[];
 };
 
 type DropdownFieldKey = 'category' | 'season' | 'size' | 'material' | 'occasion';
@@ -47,10 +57,15 @@ const DROPDOWN_OPTIONS: Record<DropdownFieldKey, string[]> = {
   occasion: ['Formal', 'Casual', 'Party', 'Travel', 'Work'],
 };
 
+/**
+ * Wardrobe item `category` must match Laravel `Rule::in` for this resource.
+ * Hoppscotch + live responses use singular buckets: `top`, `bottom`, `outerwear`, `dress`
+ * (not `tops` / `bottoms` — those are virtual-try-on categories in the same API export).
+ */
 const CATEGORY_TO_API: Record<string, string> = {
   Top: 'top',
-  Shirt: 'shirt',
-  Coat: 'coat',
+  Shirt: 'top',
+  Coat: 'outerwear',
   Bottom: 'bottom',
   Dress: 'dress',
 };
@@ -73,10 +88,20 @@ const OCCASION_TO_API: Record<string, string> = {
 
 const API_TO_CATEGORY_LABEL: Record<string, string> = {
   top: 'Top',
+  tops: 'Top',
   shirt: 'Shirt',
+  blouse: 'Shirt',
   coat: 'Coat',
+  jacket: 'Coat',
+  outerwear: 'Coat',
   bottom: 'Bottom',
+  bottoms: 'Bottom',
+  pant: 'Bottom',
+  pants: 'Bottom',
+  skirt: 'Bottom',
   dress: 'Dress',
+  'one-piece': 'Dress',
+  onepiece: 'Dress',
 };
 
 const API_TO_SEASON_LABEL: Record<string, string> = {
@@ -93,6 +118,19 @@ const API_TO_OCCASION_LABEL: Record<string, string> = {
   party: 'Party',
   travel: 'Travel',
   work: 'Work',
+};
+
+const formatSaveFailureMessage = (error: unknown, verb: string): string => {
+  if (error instanceof ApiError) {
+    if (error.code === 'VALIDATION_ERROR') {
+      return `${error.message} Please check category, season, occasion, and other fields, then try again.`;
+    }
+    return error.message;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return `${verb}: ${error.message}`;
+  }
+  return verb;
 };
 
 const FRONT_IMAGE = require('../../../assets/EditItemDetails/trendy-top-design-mockup-presented-wooden-hanger_460848-14028 1.png');
@@ -160,6 +198,8 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
   const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [remoteImageUri, setRemoteImageUri] = useState<string | null>(null);
 
+  const editPutSnapshotRef = useRef<EditPutSnapshot | null>(null);
+
   useEffect(() => {
     if (!isCreate) {
       return;
@@ -194,6 +234,7 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
       return;
     }
     let cancelled = false;
+    editPutSnapshotRef.current = null;
     void (async () => {
       setIsLoadingItem(true);
       try {
@@ -206,15 +247,33 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
           notify({ type: 'error', message: 'This item was not found or could not be loaded.' });
           return;
         }
+        const folderId = it.folderId?.trim() ?? '';
+        const seasonsApi = it.seasons.length
+          ? it.seasons.map((s) => s.trim().toLowerCase()).filter(Boolean)
+          : [SEASON_TO_API[DROPDOWN_OPTIONS.season[0]] ?? 'winter'];
+        const occasionsApi = it.occasions.length
+          ? it.occasions.map((o) => o.trim().toLowerCase()).filter(Boolean)
+          : [OCCASION_TO_API[DROPDOWN_OPTIONS.occasion[0]] ?? 'casual'];
+
+        editPutSnapshotRef.current = {
+          folderId,
+          subcategory: it.subcategory?.trim() ?? '',
+          productUrl: it.productUrl?.trim() ?? '',
+          isFavorite: it.isFavorite,
+          seasonsApi: [...seasonsApi],
+          occasionsApi: [...occasionsApi],
+        };
+
         setName(it.name);
         setBrand(it.brand ?? '');
         setPurchasePrice(it.purchasePrice?.trim() ? it.purchasePrice : '0');
-        setCategory(API_TO_CATEGORY_LABEL[it.category.toLowerCase()] ?? it.category);
+        const catKey = normalizeWardrobeItemCategory(it.category);
+        setCategory(API_TO_CATEGORY_LABEL[catKey] ?? API_TO_CATEGORY_LABEL[it.category.toLowerCase()] ?? 'Top');
         setSelectedColor(it.color && /^#/.test(it.color) ? it.color : COLOR_SWATCHES[0]);
-        setSeason(API_TO_SEASON_LABEL[it.seasons[0]?.toLowerCase()] ?? DROPDOWN_OPTIONS.season[0]);
+        setSeason(API_TO_SEASON_LABEL[seasonsApi[0] ?? ''] ?? DROPDOWN_OPTIONS.season[0]);
         setSize(sizeLabelFromApi(it.size));
         setMaterial(materialLabelFromApi(it.material));
-        setOccasion(API_TO_OCCASION_LABEL[it.occasions[0]?.toLowerCase()] ?? DROPDOWN_OPTIONS.occasion[0]);
+        setOccasion(API_TO_OCCASION_LABEL[occasionsApi[0] ?? ''] ?? DROPDOWN_OPTIONS.occasion[0]);
         setDescription(it.description?.trim() ? it.description : '');
         setRemoteImageUri(it.imageUrl);
         setPendingImageUri(null);
@@ -235,6 +294,7 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
     })();
     return () => {
       cancelled = true;
+      editPutSnapshotRef.current = null;
     };
   }, [isEdit, editItemId]);
 
@@ -262,6 +322,10 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
     }
     if (activeDropdown === 'season') {
       setSeason(value);
+      const api = SEASON_TO_API[value] ?? value.trim().toLowerCase();
+      if (editPutSnapshotRef.current && api) {
+        editPutSnapshotRef.current.seasonsApi = [api];
+      }
     }
     if (activeDropdown === 'size') {
       setSize(value);
@@ -271,6 +335,10 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
     }
     if (activeDropdown === 'occasion') {
       setOccasion(value);
+      const api = OCCASION_TO_API[value] ?? value.trim().toLowerCase();
+      if (editPutSnapshotRef.current && api) {
+        editPutSnapshotRef.current.occasionsApi = [api];
+      }
     }
     closeDropdown();
   };
@@ -298,7 +366,14 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
 
   const handleSave = async () => {
     if (isLegacy) {
+      notify({
+        type: 'info',
+        message: 'This screen is not linked to the server yet. Open Add item from a folder or the Add tab.',
+      });
       navigation.goBack();
+      return;
+    }
+    if (isSaving) {
       return;
     }
     if (!name.trim()) {
@@ -322,7 +397,9 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
       try {
         await wardrobeItemService.createItem({
           name: name.trim(),
-          category: CATEGORY_TO_API[category] ?? category.trim().toLowerCase(),
+          category: normalizeWardrobeItemCategory(
+            CATEGORY_TO_API[category] ?? category.trim().toLowerCase()
+          ),
           brand: brand.trim() || 'Unknown',
           purchase_price: (purchasePrice || '0').trim(),
           folder_id: effectiveFolderId,
@@ -334,45 +411,52 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
         navigation.goBack();
       } catch (error) {
         logSosError(LOG, 'createItem', error);
-        const message =
-          error instanceof ApiError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'Could not save this item.';
-        notify({ type: 'error', message });
+        notify({ type: 'error', message: formatSaveFailureMessage(error, 'Could not add this item') });
       } finally {
         setIsSaving(false);
       }
       return;
     }
     if (isEdit && editItemId) {
+      const snap = editPutSnapshotRef.current;
+      if (!snap?.folderId) {
+        notify({
+          type: 'error',
+          message: 'This item is still loading or has no folder on the server. Go back and open it again.',
+        });
+        return;
+      }
       setIsSaving(true);
       try {
+        const categoryApi = normalizeWardrobeItemCategory(
+          CATEGORY_TO_API[category] ?? category.trim().toLowerCase()
+        );
         await wardrobeItemService.updateItem(editItemId, {
           name: name.trim(),
           description: description.trim(),
-          category: CATEGORY_TO_API[category] ?? category.trim().toLowerCase(),
+          category: categoryApi,
           color: selectedColor,
           brand: brand.trim() || undefined,
           material: materialToApi(material),
           size: sizeToApi(size),
           purchase_price: purchasePrice.trim() || undefined,
-          seasons: [SEASON_TO_API[season] ?? season.trim().toLowerCase()],
-          occasions: [OCCASION_TO_API[occasion] ?? occasion.trim().toLowerCase()],
+          folder_id: snap.folderId,
+          subcategory: snap.subcategory,
+          product_url: snap.productUrl,
+          is_favorite: snap.isFavorite,
+          seasons: snap.seasonsApi.length
+            ? [...snap.seasonsApi]
+            : [SEASON_TO_API[season] ?? season.trim().toLowerCase()].filter(Boolean),
+          occasions: snap.occasionsApi.length
+            ? [...snap.occasionsApi]
+            : [OCCASION_TO_API[occasion] ?? occasion.trim().toLowerCase()].filter(Boolean),
           imageUri: pendingImageUri ?? undefined,
         });
-        notify({ type: 'success', message: 'Saved.' });
+        notify({ type: 'success', message: 'Your changes were saved.' });
         navigation.goBack();
       } catch (error) {
         logSosError(LOG, 'updateItem', error);
-        const message =
-          error instanceof ApiError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'Could not update this item.';
-        notify({ type: 'error', message });
+        notify({ type: 'error', message: formatSaveFailureMessage(error, 'Could not update this item') });
       } finally {
         setIsSaving(false);
       }

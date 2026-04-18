@@ -34,6 +34,16 @@ export const API_ENDPOINTS = {
     items: '/wardrobe/items',
     itemSearch: '/wardrobe/search',
   },
+  /** Virtual try-on: Hoppscotch Mobile API V1 — `docs/completeAPIDocumentation.html`. */
+  virtualTryOn: {
+    collection: '/virtual-tryon',
+    byId: (id: string | number) => `/virtual-tryon/${id}`,
+    react: (id: string | number) => `/virtual-tryon/${id}/react`,
+    rate: (id: string | number) => `/virtual-tryon/${id}/rate`,
+    regenerate: (id: string | number) => `/virtual-tryon/${id}/regenerate`,
+    lookbook: (id: string | number) => `/virtual-tryon/${id}/lookbook`,
+    schedule: (id: string | number) => `/virtual-tryon/${id}/schedule`,
+  },
   payment: {
     upiVerify: '/payments/upi/verify',
     upiPay: '/payments/upi/pay',

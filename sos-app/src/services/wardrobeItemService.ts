@@ -13,6 +13,41 @@ const LOG = '[SOS_WARDROBE_ITEMS]';
 
 const shouldUseMock = (): boolean => API_CONFIG.isUsingFallbackBaseUrl;
 
+/**
+ * Canonical wardrobe `category` values expected by `POST|PUT /wardrobe/items` (Laravel `Rule::in`).
+ * Maps common API/AI synonyms so the client never sends try-on tokens (`tops`, `bottoms`) here.
+ */
+export const normalizeWardrobeItemCategory = (raw: string): string => {
+  const t = raw.trim().toLowerCase();
+  const map: Record<string, string> = {
+    top: 'top',
+    tops: 'top',
+    shirt: 'top',
+    shirts: 'top',
+    tee: 'top',
+    tshirt: 'top',
+    blouse: 'top',
+    upper: 'top',
+    bottom: 'bottom',
+    bottoms: 'bottom',
+    pant: 'bottom',
+    pants: 'bottom',
+    jeans: 'bottom',
+    skirt: 'bottom',
+    shorts: 'bottom',
+    outerwear: 'outerwear',
+    coat: 'outerwear',
+    jacket: 'outerwear',
+    blazer: 'outerwear',
+    dress: 'dress',
+    dresses: 'dress',
+    'one-piece': 'dress',
+    onepiece: 'dress',
+    jumpsuit: 'dress',
+  };
+  return map[t] ?? t;
+};
+
 type ApiRow = Record<string, unknown>;
 
 const toStr = (v: unknown): string => (v == null ? '' : String(v));
@@ -27,8 +62,14 @@ const stringArray = (v: unknown): string[] => {
   if (Array.isArray(v)) {
     return v.filter((x): x is string => typeof x === 'string').map((s) => s.trim()).filter(Boolean);
   }
+  if (typeof v === 'number' && !Number.isNaN(v)) {
+    return [String(v)].filter(Boolean);
+  }
   if (typeof v === 'string' && v.trim()) {
-    return [v.trim()];
+    return v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   return [];
 };
@@ -36,6 +77,8 @@ const stringArray = (v: unknown): string[] => {
 const mapRowToItem = (row: ApiRow): WardrobeItem => {
   const id = toStr(row.id ?? row._id);
   const imageRaw =
+    (row.original_image_url as string | undefined) ??
+    (row.processed_image_url as string | undefined) ??
     (row.image_url as string | undefined) ??
     (row.thumbnail_url as string | undefined) ??
     (row.image as string | undefined);
@@ -43,7 +86,13 @@ const mapRowToItem = (row: ApiRow): WardrobeItem => {
     id,
     name: toStr(row.name).trim() || 'Item',
     description: row.description == null ? null : toStr(row.description),
-    category: toStr(row.category).trim() || '—',
+    category: (() => {
+      const c = toStr(row.category).trim();
+      if (!c || c === '—') {
+        return 'top';
+      }
+      return normalizeWardrobeItemCategory(c);
+    })(),
     subcategory: row.subcategory == null ? null : toStr(row.subcategory),
     color: row.color == null ? null : toStr(row.color),
     brand: row.brand == null ? null : toStr(row.brand),
@@ -103,9 +152,20 @@ const unwrapSingleItem = (payload: unknown): WardrobeItem | null => {
     const d = o.data as Record<string, unknown>;
     if (d.item && typeof d.item === 'object') {
       node = d.item as ApiRow;
+    } else if (d.wardrobe_item && typeof d.wardrobe_item === 'object') {
+      node = d.wardrobe_item as ApiRow;
+    } else if (d.data && typeof d.data === 'object' && !Array.isArray(d.data)) {
+      const inner = d.data as Record<string, unknown>;
+      if (inner.id != null || inner.name) {
+        node = inner as ApiRow;
+      }
     } else if (d.id != null || d.name) {
       node = d as ApiRow;
     }
+  } else if (o.wardrobe_item && typeof o.wardrobe_item === 'object') {
+    node = o.wardrobe_item as ApiRow;
+  } else if (o.item && typeof o.item === 'object' && !Array.isArray(o.item)) {
+    node = o.item as ApiRow;
   } else if (o.id != null || o.name) {
     node = o as ApiRow;
   }
@@ -153,6 +213,11 @@ export type CreateWardrobeItemInput = {
   seasons: string[];
   occasions: string[];
   imageUri: string;
+  /** Optional — included when API expects full item fields on create */
+  description?: string;
+  color?: string;
+  material?: string;
+  size?: string;
 };
 
 export type UpdateWardrobeItemInput = {
@@ -183,16 +248,22 @@ const appendIfDefined = (form: FormData, key: string, value: string | undefined)
 const buildUpdateFormData = (input: UpdateWardrobeItemInput): FormData => {
   const form = new FormData();
   appendIfDefined(form, 'name', input.name);
-  appendIfDefined(form, 'description', input.description);
-  appendIfDefined(form, 'category', input.category);
-  appendIfDefined(form, 'subcategory', input.subcategory);
+  if (input.description !== undefined) {
+    form.append('description', input.description);
+  }
+  if (input.category !== undefined && input.category.trim() !== '') {
+    form.append('category', normalizeWardrobeItemCategory(input.category));
+  }
+  form.append('subcategory', (input.subcategory ?? '').trim());
   appendIfDefined(form, 'color', input.color);
   appendIfDefined(form, 'brand', input.brand);
   appendIfDefined(form, 'material', input.material);
   appendIfDefined(form, 'size', input.size);
   appendIfDefined(form, 'purchase_price', input.purchase_price);
-  appendIfDefined(form, 'folder_id', input.folder_id);
-  appendIfDefined(form, 'product_url', input.product_url);
+  if (input.folder_id !== undefined && input.folder_id !== null && String(input.folder_id).trim() !== '') {
+    form.append('folder_id', String(input.folder_id).trim());
+  }
+  form.append('product_url', (input.product_url ?? '').trim());
   if (input.is_favorite !== undefined) {
     form.append('is_favorite', input.is_favorite ? '1' : '0');
   }
@@ -301,10 +372,25 @@ export const wardrobeItemService = {
 
     const form = new FormData();
     form.append('name', input.name.trim());
-    form.append('category', input.category.trim().toLowerCase());
+    form.append('category', normalizeWardrobeItemCategory(input.category));
     form.append('brand', input.brand.trim());
     form.append('purchase_price', String(input.purchase_price).trim());
     form.append('folder_id', String(input.folder_id).trim());
+    // Optional fields: only send when set so create matches minimal Hoppscotch bodies and avoids
+    // backend rejecting unknown formats (e.g. hex color vs named color).
+    const desc = input.description?.trim();
+    if (desc) {
+      form.append('description', desc);
+    }
+    if (input.color?.trim()) {
+      form.append('color', input.color.trim());
+    }
+    if (input.material?.trim()) {
+      form.append('material', input.material.trim().toLowerCase());
+    }
+    if (input.size?.trim()) {
+      form.append('size', input.size.trim());
+    }
     input.seasons.forEach((s) => {
       if (s.trim()) form.append('seasons[]', s.trim().toLowerCase());
     });

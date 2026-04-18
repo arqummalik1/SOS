@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import { API_CONFIG } from '../api/config';
+import { API_CONFIG, wardrobeOutfitRemoteApiEnabled } from '../api/config';
 import { API_ENDPOINTS } from '../api/endpoints';
 import { ApiError } from '../api/errors';
 import { Outfit } from '../models/Outfit.model';
@@ -45,7 +45,7 @@ const isWardrobeUnavailable = (error: unknown): boolean =>
 
 export const wardrobeService = {
   async getOutfits(): Promise<Outfit[]> {
-    if (shouldUseMock()) {
+    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
       return [];
     }
 
@@ -64,7 +64,7 @@ export const wardrobeService = {
   },
 
   async getSavedOutfitIds(): Promise<string[]> {
-    if (shouldUseMock()) {
+    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
       return [];
     }
 
@@ -84,7 +84,7 @@ export const wardrobeService = {
   },
 
   async saveOutfit(outfitId: string): Promise<void> {
-    if (shouldUseMock()) {
+    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
       return;
     }
 
@@ -92,7 +92,7 @@ export const wardrobeService = {
   },
 
   async unsaveOutfit(outfitId: string): Promise<void> {
-    if (shouldUseMock()) {
+    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
       return;
     }
 
