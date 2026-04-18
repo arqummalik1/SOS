@@ -17,6 +17,7 @@ export type WardrobeItem = {
   occasions: string[];
   productUrl: string | null;
   isFavorite: boolean;
+  /** Resolved display URL; mapping prefers `processed_*` over `original_*` from the API. */
   imageUrl: string | null;
   raw?: Record<string, unknown>;
 };

@@ -8,7 +8,7 @@ export type WardrobeFolder = {
   colorCode: string;
   order: number;
   itemCount: number;
-  /** Resolved display URL for folder cover image, if any. */
+  /** Resolved display URL for folder cover; mapping prefers `processed_feature_*` over raw feature image when present. */
   featureImageUrl: string | null;
   featureImageAiStatus: string | null;
 };
@@ -16,7 +16,7 @@ export type WardrobeFolder = {
 export type WardrobeFolderItem = {
   id: string;
   name: string;
-  /** Use with `<Image source={{ uri }} />` when set. */
+  /** Resolved garment image for folder-detail rows; prefers `processed_*` from the API. */
   imageUri: string | null;
   category?: string;
   color?: string;

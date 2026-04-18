@@ -36,7 +36,12 @@ const mapFolderRow = (row: ApiFolderRaw): WardrobeFolder => {
   const order = typeof orderRaw === 'number' ? orderRaw : Number(orderRaw) || 0;
   const featureUrl =
     resolveProfileMediaUrl(
-      (row.feature_image_url as string | undefined) ?? (row.feature_image as string | undefined)
+      (row.processed_feature_image_url as string | undefined) ??
+        (row.processedFeatureImageUrl as string | undefined) ??
+        (row.processed_feature_image as string | undefined) ??
+        (row.processedFeatureImage as string | undefined) ??
+        (row.feature_image_url as string | undefined) ??
+        (row.feature_image as string | undefined)
     ) ?? null;
   const aiStatus = toStr(row.feature_image_ai_status ?? row.featureImageAiStatus) || null;
 
@@ -91,7 +96,14 @@ const mapItemRow = (row: ApiFolderRaw): WardrobeFolderItem => {
   const name = toStr(row.name ?? row.title).trim() || 'Item';
   const uri =
     resolveProfileMediaUrl(
-      (row.image_url as string | undefined) ??
+      (row.processed_image_url as string | undefined) ??
+        (row.processedImageUrl as string | undefined) ??
+        (row.processed_image as string | undefined) ??
+        (row.processedImage as string | undefined) ??
+        (row.original_image_url as string | undefined) ??
+        (row.originalImageUrl as string | undefined) ??
+        (row.original_image as string | undefined) ??
+        (row.image_url as string | undefined) ??
         (row.thumbnail_url as string | undefined) ??
         (row.image as string | undefined) ??
         (row.photo_url as string | undefined)

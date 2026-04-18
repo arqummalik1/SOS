@@ -149,7 +149,8 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 | Cursor API rules | **`.cursor/rules/sos-backend-api-reference.mdc`**, **`.cursor/rules/styleonspot-api-spec.mdc`** |
 | HTTP client | `sos-app/src/api/client.ts`, `errors.ts`, `config.ts` |
 | User + onboarding HTTP | `sos-app/src/services/userService.ts` |
-| Wardrobe items HTTP | `sos-app/src/services/wardrobeItemService.ts` |
+| Wardrobe items HTTP | `sos-app/src/services/wardrobeItemService.ts` (item `imageUrl` prefers **processed** image fields) |
+| Wardrobe folders HTTP | `sos-app/src/services/wardrobeFolderService.ts` (folder cover + nested items prefer **processed** URLs) |
 | Virtual try-on HTTP | `sos-app/src/services/virtualTryOnService.ts`, `VirtualTryOnScreen.tsx`, `virtualTryOnRouteParams.ts` |
 | Auth HTTP | `sos-app/src/services/authService.ts` |
 | Auth state | `sos-app/src/store/AuthContext.tsx` |

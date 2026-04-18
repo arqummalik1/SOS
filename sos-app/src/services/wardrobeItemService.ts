@@ -76,9 +76,16 @@ const stringArray = (v: unknown): string[] => {
 
 const mapRowToItem = (row: ApiRow): WardrobeItem => {
   const id = toStr(row.id ?? row._id);
+  /** Prefer server-processed assets for all wardrobe UI; fall back to original or legacy keys. */
   const imageRaw =
-    (row.original_image_url as string | undefined) ??
     (row.processed_image_url as string | undefined) ??
+    (row.processedImageUrl as string | undefined) ??
+    (row.processed_image as string | undefined) ??
+    (row.processedImage as string | undefined) ??
+    (row.original_image_url as string | undefined) ??
+    (row.originalImageUrl as string | undefined) ??
+    (row.original_image as string | undefined) ??
+    (row.originalImage as string | undefined) ??
     (row.image_url as string | undefined) ??
     (row.thumbnail_url as string | undefined) ??
     (row.image as string | undefined);
