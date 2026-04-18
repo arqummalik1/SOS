@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Alert,
+  ActivityIndicator,
   Dimensions,
   KeyboardAvoidingView,
   StatusBar,
@@ -13,11 +13,10 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
-import { GlassButton } from '../../components/ui/GlassButton';
 import { OTPInput } from '../../components/inputs/OTPInput';
 import { useOTPViewModel } from '../../viewmodels/useOTPViewModel';
-import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { notify } from '../../utils/notify';
 
 const { height } = Dimensions.get('window');
 
@@ -29,23 +28,38 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
   const {
     otp,
     isComplete,
-    isLoading,
+    isVerifying,
+    isResending,
     error,
     resendTimer,
     handleChange,
     handleVerify,
     handleResend,
+    clearError,
   } = useOTPViewModel();
   const [agreed, setAgreed] = useState(false);
 
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+    notify({ type: 'error', message: error });
+    clearError();
+  }, [error, clearError]);
+
   const onVerify = async () => {
     if (!agreed) {
-      Alert.alert('Terms & Conditions', 'Please agree to the Terms & Conditions and Privacy Policy');
+      notify({
+        type: 'error',
+        message: 'Please agree to the Terms & Conditions and Privacy Policy',
+        title: 'Terms & Conditions',
+      });
       return;
     }
 
-    const success = await handleVerify();
-    if (success) {
+    const message = await handleVerify();
+    if (message) {
+      notify({ type: 'success', message });
       navigation.navigate('ProfileSetupHub');
     }
   };
@@ -103,15 +117,20 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
-                  (!isComplete || isLoading) && styles.buttonDisabled
+                  (!isComplete || isVerifying) && styles.buttonDisabled
                 ]}
                 onPress={onVerify}
-                disabled={!isComplete || isLoading}
+                disabled={!isComplete || isVerifying}
                 activeOpacity={0.8}
               >
-                <Text style={styles.buttonText}>Verify</Text>
+                {isVerifying ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.buttonText}>Verify</Text>
+                )}
               </TouchableOpacity>
             </View>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <View style={styles.resendContainer}>
               {resendTimer > 0 ? (
@@ -119,8 +138,23 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
                   Resend code in {resendTimer}s
                 </Text>
               ) : (
-                <TouchableOpacity onPress={handleResend}>
-                  <Text style={styles.resendLink}>Resend code</Text>
+                <TouchableOpacity
+                  disabled={isResending}
+                  onPress={async () => {
+                    const message = await handleResend();
+                    if (message) {
+                      notify({ type: 'success', message });
+                    }
+                  }}
+                >
+                  {isResending ? (
+                    <View style={styles.resendLoaderRow}>
+                      <ActivityIndicator size="small" color="#000000" />
+                      <Text style={styles.resendLoadingText}>Sending...</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.resendLink}>Resend code</Text>
+                  )}
                 </TouchableOpacity>
               )}
             </View>
@@ -262,5 +296,25 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  resendLoaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resendLoadingText: {
+    fontFamily: typography.footnote.fontFamily,
+    fontSize: 13,
+    color: '#000000',
+    fontWeight: '600',
+  },
+  errorText: {
+    width: '100%',
+    marginTop: -10,
+    marginBottom: 14,
+    fontFamily: typography.caption1.fontFamily,
+    fontSize: 12,
+    color: '#D74444',
+    textAlign: 'left',
   },
 });

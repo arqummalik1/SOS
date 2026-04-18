@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   Platform,
   StatusBar,
-  SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
 import { typography } from '../../theme/typography';
 import { fontNames } from '../../theme/fonts';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 interface ProfileSetupHubScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -30,12 +33,46 @@ interface ProfileSetupHubScreenProps {
  *  6. Link:     "Skip for now"             (underlined, centre)
  */
 export const ProfileSetupHubScreen: React.FC<ProfileSetupHubScreenProps> = ({ navigation }) => {
+  const [isUploading, setIsUploading] = React.useState(false);
+
   const navigateToCamera = () => {
     navigation.navigate('ProfilePicture');
   };
 
-  const handleUpload = () => {
-    // TODO: integrate expo-image-picker in a future sprint
+  const handleUpload = async () => {
+    if (isUploading) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      notify({ type: 'error', message: 'Gallery access is required to upload your profile photo.' });
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.9,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) {
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const upload = await userService.uploadProfileImage(result.assets[0].uri);
+      notify({ type: 'success', message: upload.message });
+      navigation.navigate('ProfileSetup', {
+        profileImage: upload.profileImageUrl ?? result.assets[0].uri,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to upload profile image.';
+      notify({ type: 'error', message });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSkip = () => {
@@ -71,6 +108,7 @@ export const ProfileSetupHubScreen: React.FC<ProfileSetupHubScreenProps> = ({ na
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={navigateToCamera}
+              disabled={isUploading}
               activeOpacity={0.75}
             >
               <Ionicons name="camera-outline" size={22} color="#0A0A0A" style={styles.buttonIcon} />
@@ -81,10 +119,17 @@ export const ProfileSetupHubScreen: React.FC<ProfileSetupHubScreenProps> = ({ na
             <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleUpload}
+              disabled={isUploading}
               activeOpacity={0.9}
             >
-              <Ionicons name="cloud-upload-outline" size={22} color="#FFFFFF" style={styles.buttonIcon} />
-              <Text style={styles.primaryButtonText}>Upload image</Text>
+              {isUploading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="cloud-upload-outline" size={22} color="#FFFFFF" style={styles.buttonIcon} />
+                  <Text style={styles.primaryButtonText}>Upload image</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
 

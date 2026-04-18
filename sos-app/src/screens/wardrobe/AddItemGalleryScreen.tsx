@@ -12,9 +12,15 @@ import {
   StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { notify } from '../../utils/notify';
+import { logSosError } from '../../utils/logSosError';
+
+const LOG = '[SOS_ADD_ITEM_GALLERY]';
 
 const { width } = Dimensions.get('window');
 const COLUMN_COUNT = 3;
@@ -35,16 +41,37 @@ const MOCK_ITEMS = [
  * 100% Pixel-Perfect Replication of Add Item - Gallery.png
  */
 export const AddItemGalleryScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddItemGallery'>>();
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
+  const openEditorWithImage = (imageUri: string) => {
+    try {
+      console.log(`${LOG} open EditItemDetails (create)`);
+      navigation.navigate('Main', {
+        screen: 'Wardrobe',
+        params: {
+          screen: 'EditItemDetails',
+          params: { mode: 'create', imageUri, folderId: route.params?.folderId },
+        },
+      });
+      navigation.goBack();
+    } catch (error) {
+      logSosError(LOG, 'navigate to EditItemDetails', error);
+      notify({ type: 'error', message: 'Could not open the item editor. Try again.' });
+    }
+  };
+
+  const renderItem = ({ item }: { item: (typeof MOCK_ITEMS)[number] }) => (
+    <TouchableOpacity
       style={[styles.itemContainer, { backgroundColor: item.backgroundColor }]}
       activeOpacity={0.9}
+      onPress={() => {
+        if (item.image) {
+          openEditorWithImage(item.image);
+        }
+      }}
     >
-      {item.image && (
-        <Image source={{ uri: item.image }} style={styles.itemImage} />
-      )}
+      {item.image && <Image source={{ uri: item.image }} style={styles.itemImage} />}
     </TouchableOpacity>
   );
 

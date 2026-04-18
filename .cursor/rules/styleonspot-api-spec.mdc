@@ -1,0 +1,27 @@
+---
+description: Official Style On Spot API documentation URL + repo API integration guide (always consult for HTTP contracts)
+alwaysApply: true
+---
+
+# Style On Spot — official API spec + integration guide
+
+## Official API documentation (canonical contract)
+
+**Primary URL (API viewer / documentation):**  
+https://api.styleonspot.com/view/f2fb9ef4-e921-404c-949d-4daf9f445155/CURRENT
+
+- Use this URL when checking **request/response shapes**, **auth**, **query params**, and **multipart field names** against production.
+- The viewer may require **authentication** in the browser; if unreachable from tools, rely on the repo guide below and ask the team for an export or token when contracts are ambiguous.
+
+## Repo-maintained integration narrative (plain English)
+
+**Read next:** `docs/API_INTEGRATION_GUIDE.md` at the workspace root.
+
+It describes **what / why / how** for each integrated endpoint, which **service** wraps it, and typical **screens** — aligned with `sos-app/src/api/endpoints.ts` and `sos-app/src/services/*`.
+
+Also keep **`memory.md`** (repo root) updated when routes or flows change.
+
+## Implementation rules (recap)
+
+- HTTP only through **`sos-app/src/api`** (`apiClient`); feature calls through **`sos-app/src/services`**.
+- Do not invent paths or body shapes: **verify** in code, `API_INTEGRATION_GUIDE.md`, the official URL above, or ask the user.

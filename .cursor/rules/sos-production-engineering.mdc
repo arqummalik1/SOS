@@ -1,0 +1,53 @@
+---
+description: SOS production — no blind assumptions, clarify then plan, scalable RN, memory + todos
+alwaysApply: true
+---
+
+# SOS — Production engineering (always)
+
+Treat **sos-app** as **production software**: **highly scalable**, maintainable, observable, and honest about risk—not “demo quality.” Combine with **ui-visual-style.mdc**.
+
+## No blind assumptions — clarify, then plan, then build
+
+- **Do not guess** API shapes, route names, business rules, or product intent when **multiple outcomes are plausible** or the repo does not prove the answer. **Verify in code/docs** or **ask the user** short, concrete questions **before** writing substantial implementation.
+- **When to ask (required):** unclear acceptance criteria; breaking or irreversible behavior; security/privacy; backend contract unknown; “either A or B” architecture; anything that would waste the user’s time if guessed wrong.
+- **When not to nag:** trivial/obvious fixes, typos, formatting, or paths **already established** in this repo—execute using existing patterns without a questionnaire.
+- **Bias:** Prefer **honest** trade-offs (“this is a shortcut; here is the scalable alternative”) over sounding confident while shipping fragile code.
+
+**Workflow for non-trivial or ambiguous work**
+
+1. **Understand** — read rules, **`memory.md`**, search repo; list unknowns.  
+2. **Clarify** — user questions until requirements and edge cases are clear **or** explicitly deferred.  
+3. **Plan** — short ordered plan (what files, what contracts).  
+4. **Build** — implement to that plan.  
+5. **Track** — use **Cursor todos** for multi-step work: create items, mark **in_progress** / **completed**; do not leave stale **in_progress**.
+
+## Context you must use
+
+- **`.cursor/rules/*.mdc`**, this file, and **`memory.md`** (repo root) for handoff.  
+- **API contracts:** official Style On Spot API viewer (**`styleonspot-api-spec.mdc`**) and **`docs/API_INTEGRATION_GUIDE.md`** — read before changing or adding HTTP integrations.  
+- **Repository search**, open files, conversation history. Official **Expo / RN** docs or user-provided **Context7** / links **over guesswork**.
+
+## Architecture & scalability
+
+- **Networking:** **`sos-app/src/api`** only—no ad-hoc `fetch` in screens for app APIs.  
+- **Features:** **`src/services/*`**—typed, single responsibility, easy to extend (new endpoints = extend service + types, not copy-paste).  
+- **UI:** Theme tokens, shared patterns; avoid tight coupling of screens to raw HTTP.  
+- **RN quality:** Solid data flow, hooks used deliberately, permissions and Android lifecycle edge cases handled; media sized before upload when relevant; **never log secrets**.
+
+## Definition of done (API / flow)
+
+- Central client + services; surfaced errors; loading + disabled submit; user-safe copy; types/endpoints in the right layer.
+
+---
+
+## After you change code — reply format
+
+- **Plain-English** summary: what / where / how to verify; optional **What’s next** if blocked or user-dependent.  
+- **Mermaid flowchart** only for **in-app user-flow** work (onboarding, auth, multi-screen journeys, matching screen→service→API diagrams)—not for tiny refactors or lint-only edits.
+
+---
+
+## `memory.md`
+
+- Update **`memory.md`** after meaningful API/onboarding/architecture changes so new tabs stay aligned.

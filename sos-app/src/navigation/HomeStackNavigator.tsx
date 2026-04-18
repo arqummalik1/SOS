@@ -7,12 +7,13 @@ import { EditItemDetailsScreen } from '../screens/wardrobe/EditItemDetailsScreen
 import { OutfitDetailScreen } from '../screens/outfit/OutfitDetailScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
 import { VirtualTryOnScreen } from '../screens/tryon/VirtualTryOnScreen';
+import type { EditItemDetailsParams } from './wardrobeNavParams';
 
 export type HomeStackParamList = {
   HomeMain: undefined;
   Dashboard: undefined;
   MyItems: undefined;
-  EditItemDetails: undefined;
+  EditItemDetails: EditItemDetailsParams | undefined;
   OutfitDetail: { outfit: any };
   Notifications: undefined;
   VirtualTryOn: { outfit?: any };

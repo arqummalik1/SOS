@@ -1,15 +1,16 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../store/AuthContext';
 import { AuthNavigator } from './AuthNavigator';
-import { MainTabNavigator } from './MainTabNavigator';
+import { MainTabNavigator, type MainTabParamList } from './MainTabNavigator';
 
 export type RootStackParamList = {
   Auth: undefined;
-  Main: undefined;
-  AddItemCamera: undefined;
-  AddItemGallery: undefined;
+  Main: NavigatorScreenParams<MainTabParamList> | undefined;
+  AddItemCamera: { folderId?: string } | undefined;
+  AddItemGallery: { folderId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

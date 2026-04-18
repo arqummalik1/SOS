@@ -8,6 +8,7 @@ import {
   Animated,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useIsFocused } from '@react-navigation/native';
@@ -15,6 +16,9 @@ import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { ApiError } from '../../api/errors';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 interface ProfilePictureScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -34,6 +38,44 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const shutterScale = useRef(new Animated.Value(1)).current;
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadAndContinue = async (uri: string, source: 'camera' | 'gallery') => {
+    const filename = uri.split('/').pop();
+    console.log('[SOS_PROFILE_IMAGE] screen: starting upload pipeline', {
+      source,
+      filename,
+      platform: Platform.OS,
+    });
+
+    try {
+      setIsUploading(true);
+      const uploadResult = await userService.uploadProfileImage(uri);
+      console.log('[SOS_PROFILE_IMAGE] screen: upload finished, navigating to ProfileSetup', {
+        serverMessage: uploadResult.message,
+        usingServerUrl: Boolean(uploadResult.profileImageUrl),
+      });
+      notify({ type: 'success', message: uploadResult.message });
+      navigation.navigate('ProfileSetup', {
+        profileImage: uploadResult.profileImageUrl ?? uri,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('[SOS_PROFILE_IMAGE] screen: upload error', {
+          code: error.code,
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error('[SOS_PROFILE_IMAGE] screen: upload error', error);
+      }
+      const message = error instanceof Error ? error.message : 'Failed to upload profile image.';
+      notify({ type: 'error', message });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   /* ── Shutter animation ── */
   const animateShutter = () => {
@@ -53,41 +95,111 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
 
   /* ── Take picture ── */
   const takePicture = async () => {
+    if (isUploading) return;
+    console.log('[SOS_PROFILE_IMAGE] screen: shutter pressed (camera capture)');
     animateShutter();
 
-    if (!cameraRef.current) return;
+    if (!cameraRef.current) {
+      console.warn('[SOS_PROFILE_IMAGE] screen: camera ref missing');
+      return;
+    }
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: Platform.OS === 'android' ? 0.65 : 0.75,
         skipProcessing: Platform.OS === 'android',
       });
 
       if (photo?.uri) {
-        // Auto-navigate to the profile setup form with the captured image
-        navigation.navigate('ProfileSetup', { profileImage: photo.uri });
+        console.log('[SOS_PROFILE_IMAGE] screen: capture OK', {
+          width: photo.width,
+          height: photo.height,
+          filename: photo.uri.split('/').pop(),
+        });
+        await uploadAndContinue(photo.uri, 'camera');
+      } else {
+        console.warn('[SOS_PROFILE_IMAGE] screen: capture returned no uri');
       }
     } catch (error) {
+      console.error('[SOS_PROFILE_IMAGE] screen: capture failed', error);
       Alert.alert('Error', 'Failed to capture image. Please try again.');
     }
   };
 
   /* ── Gallery picker ── */
   const openGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Needed', 'Gallery access is required to select a photo.');
+    if (isUploading) return;
+    console.log('[SOS_PROFILE_IMAGE] screen: gallery picker opened');
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== ImagePicker.PermissionStatus.GRANTED) {
+      console.warn('[SOS_PROFILE_IMAGE] screen: gallery permission denied', {
+        status: perm.status,
+        accessPrivileges: perm.accessPrivileges,
+      });
+      Alert.alert('Permission Needed', 'Photo library access is required to select a profile picture.');
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.9,
-    });
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: Platform.OS === 'ios',
+        aspect: Platform.OS === 'ios' ? [3, 4] : [3, 4],
+        quality: 0.85,
+        ...(Platform.OS === 'ios'
+          ? {
+              preferredAssetRepresentationMode:
+                ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+            }
+          : {}),
+      });
+    } catch (error) {
+      console.error('[SOS_PROFILE_IMAGE] screen: gallery launch failed', error);
+      Alert.alert('Error', 'Could not open your photo library. Please try again.');
+      return;
+    }
 
-    if (!result.canceled && result.assets[0]) {
-      navigation.navigate('ProfileSetup', { profileImage: result.assets[0].uri });
+    if (Platform.OS === 'android') {
+      try {
+        const pending = await ImagePicker.getPendingResultAsync();
+        if (
+          pending &&
+          typeof pending === 'object' &&
+          'canceled' in pending &&
+          pending.canceled === false &&
+          pending.assets &&
+          pending.assets.length > 0 &&
+          (result.canceled || !result.assets?.length)
+        ) {
+          console.log(
+            '[SOS_PROFILE_IMAGE] screen: recovered Android picker result after activity restart'
+          );
+          result = pending;
+        } else if (pending && typeof pending === 'object' && 'code' in pending) {
+          console.warn('[SOS_PROFILE_IMAGE] screen: Android picker error payload', pending);
+        }
+      } catch (e) {
+        console.warn('[SOS_PROFILE_IMAGE] screen: getPendingResultAsync', e);
+      }
+    }
+
+    if (result.canceled) {
+      console.log('[SOS_PROFILE_IMAGE] screen: gallery selection canceled');
+      return;
+    }
+
+    const asset = result.assets[0];
+    if (asset?.uri) {
+      console.log('[SOS_PROFILE_IMAGE] screen: gallery asset selected', {
+        filename: asset.uri.split('/').pop(),
+        width: asset.width,
+        height: asset.height,
+        type: asset.type,
+      });
+      await uploadAndContinue(asset.uri, 'gallery');
+    } else {
+      console.warn('[SOS_PROFILE_IMAGE] screen: gallery returned no asset uri');
     }
   };
 
@@ -183,6 +295,15 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
           </TouchableOpacity>
         </View>
       </View>
+
+      {isUploading ? (
+        <View style={styles.uploadingOverlay} pointerEvents="none">
+          <View style={styles.uploadingCard}>
+            <ActivityIndicator size="small" color="#111111" />
+            <Text style={styles.uploadingText}>Uploading profile image...</Text>
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.bottomSafeArea} />
     </View>
@@ -334,5 +455,30 @@ const styles = StyleSheet.create({
   },
   bottomSafeArea: {
     height: Platform.OS === 'ios' ? 20 : 10,
+  },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadingText: {
+    fontFamily: fontNames.medium,
+    fontSize: 14,
+    color: '#111111',
   },
 });

@@ -12,7 +12,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to use the camera for your profile photo.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photo library to choose a profile picture."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +37,23 @@
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-dev-client",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to set your profile picture.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to open the camera for your profile photo."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera for your profile photo.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone when recording video.",
+          "recordAudioAndroid": false
+        }
+      ]
     ]
   }
 }

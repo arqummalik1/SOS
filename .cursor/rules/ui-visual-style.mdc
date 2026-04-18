@@ -14,3 +14,7 @@ alwaysApply: true
 - When an input creates chips/tags, pressing Enter should commit the value into a removable chip.
 - For pink/lilac UI surfaces, use a shared global gradient token (do not hardcode one-off pink shades).
 - Prefer reusable gradient tokens from the theme layer (e.g. `src/theme/gradients.ts`) and apply them consistently across cards/components.
+- Standard brand pink fade should use `gradients.sospink` (`#E2D3E6` -> `#A580A6`, left-to-right).
+- For every API integration, implement full error handling (validation, network, timeout, and server errors) with user-safe messages.
+- API-driven actions must always provide interactive UX states: loading indicator/spinner, disabled submit while pending, success feedback, and inline/toast error feedback.
+- Never leave API failures silent; always surface actionable feedback so users understand what happened and what to do next.

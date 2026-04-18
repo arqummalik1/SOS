@@ -12,10 +12,15 @@ import {
 import { Camera, CameraType, CameraView, useCameraPermissions } from 'expo-camera';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 import * as ImagePicker from 'expo-image-picker';
-import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { notify } from '../../utils/notify';
+import { logSosError } from '../../utils/logSosError';
+
+const LOG = '[SOS_ADD_ITEM_CAMERA]';
 
 const { width } = Dimensions.get('window');
 const CAMERA_ASPECT_RATIO = 4 / 3;
@@ -29,7 +34,8 @@ export const AddItemCameraScreen: React.FC = () => {
   const [facing, setFacing] = useState<CameraType>('back');
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'AddItemCamera'>>();
 
   // Constants for easy modification
   const icons = {
@@ -50,20 +56,54 @@ export const AddItemCameraScreen: React.FC = () => {
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      console.log('Image picked:', result.assets[0].uri);
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        console.log(`${LOG} gallery pick OK`);
+        navigation.navigate('Main', {
+          screen: 'Wardrobe',
+          params: {
+            screen: 'EditItemDetails',
+            params: { mode: 'create', imageUri: uri, folderId: route.params?.folderId },
+          },
+        });
+        navigation.goBack();
+      }
+    } catch (error) {
+      logSosError(LOG, 'launchImageLibrary', error);
+      notify({ type: 'error', message: 'Could not open the photo library. Check permissions and try again.' });
     }
   };
 
-  const takePicture = () => {
-    // Navigate to Gallery/Items for functional demo as per user's "move to next screen" flow
-    navigation.navigate('AddItemGallery');
+  const takePicture = async () => {
+    const folderId = route.params?.folderId;
+    try {
+      if (cameraRef.current?.takePictureAsync) {
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
+        if (photo?.uri) {
+          console.log(`${LOG} capture OK — opening EditItemDetails`);
+          navigation.navigate('Main', {
+            screen: 'Wardrobe',
+            params: {
+              screen: 'EditItemDetails',
+              params: { mode: 'create', imageUri: photo.uri, folderId },
+            },
+          });
+          navigation.goBack();
+          return;
+        }
+      }
+    } catch (error) {
+      logSosError(LOG, 'takePictureAsync', error);
+    }
+    console.log(`${LOG} navigating to gallery (capture unavailable or no uri)`);
+    navigation.navigate('AddItemGallery', { folderId });
   };
 
   if (!permission) {

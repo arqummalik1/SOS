@@ -1,44 +1,64 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  Alert,
-  Image,
+  ActivityIndicator,
   Dimensions,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
-  Keyboard,
   ScrollView,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PhoneInput } from '../../components/inputs/PhoneInput';
 import { useAuthViewModel } from '../../viewmodels/useAuthViewModel';
-import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { OnboardingMosaic } from '../../components/layout/OnboardingMosaic';
+import { notify } from '../../utils/notify';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 interface SignInScreenProps {
   navigation: NativeStackNavigationProp<any>;
 }
 
 export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
-  const { phone, countryCode, isValid, isLoading, setPhone, setCountryCode, handleLogin } = useAuthViewModel();
+  const {
+    phone,
+    countryCode,
+    isValid,
+    isLoading,
+    error,
+    setPhone,
+    setCountryCode,
+    handleLogin,
+    clearError,
+  } = useAuthViewModel();
   const [agreed, setAgreed] = useState(false);
+
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+    notify({ type: 'error', message: error });
+    clearError();
+  }, [error, clearError]);
 
   const onLogin = async () => {
     if (!agreed) {
-      Alert.alert('Terms & Conditions', 'Please agree to the Terms & Conditions and Privacy Policy');
+      notify({
+        type: 'error',
+        message: 'Please agree to the Terms & Conditions and Privacy Policy',
+        title: 'Terms & Conditions',
+      });
       return;
     }
 
-    const success = await handleLogin();
-    if (success) {
+    const message = await handleLogin();
+    if (message) {
+      notify({ type: 'success', message });
       navigation.navigate('OTP');
     }
   };
@@ -73,20 +93,33 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             <View style={styles.inputContainer}>
               <PhoneInput
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(value) => {
+                  setPhone(value);
+                  if (error) {
+                    clearError();
+                  }
+                }}
                 countryCode={countryCode}
                 onCountryCodeChange={setCountryCode}
               />
             </View>
 
             <TouchableOpacity 
-              style={styles.primaryButton}
+              style={[
+                styles.primaryButton,
+                (!isValid || isLoading) && styles.buttonDisabled,
+              ]}
               onPress={onLogin}
               disabled={!isValid || isLoading}
               activeOpacity={0.9}
             >
-              <Text style={styles.buttonText}>Login</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Login</Text>
+              )}
             </TouchableOpacity>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <View style={styles.termsContainer}>
               <TouchableOpacity
@@ -178,9 +211,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   buttonDisabled: {
-    backgroundColor: '#999999',
-    shadowOpacity: 0,
-    elevation: 0,
+    backgroundColor: '#777777',
   },
   buttonText: {
     fontFamily: typography.headline.fontFamily,
@@ -223,5 +254,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.footnote.fontFamily,
     textDecorationLine: 'underline',
     fontWeight: '500',
+  },
+  errorText: {
+    width: '100%',
+    marginTop: -10,
+    marginBottom: 14,
+    fontFamily: typography.caption1.fontFamily,
+    fontSize: 12,
+    color: '#D74444',
+    textAlign: 'left',
   },
 });

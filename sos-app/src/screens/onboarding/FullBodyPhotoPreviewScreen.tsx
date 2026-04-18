@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   Image,
   TouchableOpacity,
-  Dimensions,
   Platform,
   StatusBar,
   ScrollView,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -17,6 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { ApiError } from '../../api/errors';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 interface FullBodyPhotoPreviewScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'FullBodyPhotoPreview'>;
@@ -28,7 +31,9 @@ interface FullBodyPhotoPreviewScreenProps {
  * Responsive update: Dimensions calculated dynamically inside component.
  */
 export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProps> = ({ navigation, route }) => {
-  const { width, height: screenHeight } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const [isUploading, setIsUploading] = useState(false);
+  const isUploadingRef = useRef(false);
   
   // Dimensions math:
   // Figma margins: 20px each side
@@ -41,15 +46,54 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
   const profileImage = route.params?.profileImage;
   const profileData = route.params?.profileData;
 
-  const handleLooksGood = () => {
-    navigation.navigate('BodyMeasurements', {
-      profileData: {
-        ...profileData,
-        profileImage,
-        fullBodyImage,
-      },
-    });
-  };
+  const handleLooksGood = useCallback(async () => {
+    if (isUploadingRef.current) {
+      return;
+    }
+
+    if (!fullBodyImage) {
+      navigation.navigate('BodyMeasurements', {
+        profileData: {
+          ...profileData,
+          profileImage,
+        },
+      });
+      return;
+    }
+
+    isUploadingRef.current = true;
+    setIsUploading(true);
+    try {
+      const result = await userService.uploadFullBodyImage(fullBodyImage);
+      notify({ type: 'success', message: result.message });
+      navigation.navigate('BodyMeasurements', {
+        profileData: {
+          ...profileData,
+          profileImage,
+          fullBodyImage: result.fullBodyImageUrl ?? fullBodyImage,
+          fullBodyImageUrl: result.fullBodyImageUrl,
+          fullBodyImageStoragePath: result.fullBodyImage,
+        },
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('[SOS_FULL_BODY_IMAGE] upload on continue failed', {
+          code: error.code,
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error('[SOS_FULL_BODY_IMAGE] upload on continue failed', error);
+      }
+      const message =
+        error instanceof Error ? error.message : 'Could not upload full body photo. Please try again.';
+      notify({ type: 'error', message });
+    } finally {
+      isUploadingRef.current = false;
+      setIsUploading(false);
+    }
+  }, [fullBodyImage, navigation, profileData, profileImage]);
 
   const handleEditPhoto = () => {
     navigation.navigate('FullBodyCamera', { profileImage, profileData });
@@ -95,6 +139,7 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
               style={styles.editBadge}
               activeOpacity={0.8}
               onPress={handleEditPhoto}
+              disabled={isUploading}
             >
               <View style={styles.editBadgeCircle}>
                 <Ionicons name="pencil-outline" size={16} color="#000000" />
@@ -106,11 +151,16 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
         {/* ── Look's Good Button ── */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.looksGoodButton}
+            style={[styles.looksGoodButton, isUploading && styles.looksGoodButtonDisabled]}
             onPress={handleLooksGood}
             activeOpacity={0.9}
+            disabled={isUploading}
           >
-            <Text style={styles.buttonText}>Look's Good</Text>
+            {isUploading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Look's Good</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -219,11 +269,15 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 58,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
+  },
+  looksGoodButtonDisabled: {
+    opacity: 0.75,
   },
   buttonText: {
     fontFamily: fontNames.medium,

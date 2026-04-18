@@ -64,7 +64,7 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
+        quality: Platform.OS === 'android' ? 0.65 : 0.75,
         skipProcessing: Platform.OS === 'android',
       });
 
@@ -80,27 +80,61 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
     }
   };
 
-  /* ── Gallery picker ── */
+  /* ── Gallery picker (9:16 applied on upload via image manipulator) ── */
   const openGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Needed', 'Gallery access is required to select a photo.');
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== ImagePicker.PermissionStatus.GRANTED) {
+      Alert.alert('Permission Needed', 'Photo library access is required to select a full body photo.');
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.9,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      navigation.navigate('FullBodyPhotoPreview', {
-        fullBodyImage: result.assets[0].uri,
-        profileImage,
-        profileData,
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.85,
+        ...(Platform.OS === 'ios'
+          ? {
+              preferredAssetRepresentationMode:
+                ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+            }
+          : {}),
       });
+    } catch (error) {
+      console.error('[SOS_FULL_BODY_IMAGE] gallery launch failed', error);
+      Alert.alert('Error', 'Could not open your photo library. Please try again.');
+      return;
     }
+
+    if (Platform.OS === 'android') {
+      try {
+        const pending = await ImagePicker.getPendingResultAsync();
+        if (
+          pending &&
+          typeof pending === 'object' &&
+          'canceled' in pending &&
+          pending.canceled === false &&
+          pending.assets &&
+          pending.assets.length > 0 &&
+          (result.canceled || !result.assets?.length)
+        ) {
+          result = pending as ImagePicker.ImagePickerSuccessResult;
+        }
+      } catch (e) {
+        console.warn('[SOS_FULL_BODY_IMAGE] getPendingResultAsync', e);
+      }
+    }
+
+    if (result.canceled || !result.assets[0]?.uri) {
+      return;
+    }
+
+    navigation.navigate('FullBodyPhotoPreview', {
+      fullBodyImage: result.assets[0].uri,
+      profileImage,
+      profileData,
+    });
   };
 
   /* ── Toggle front / back ── */

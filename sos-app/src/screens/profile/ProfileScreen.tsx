@@ -32,7 +32,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
     await logout();
     clearUserData();
     clearSavedOutfits();
-    navigation.navigate('First');
   };
 
   const stats = [
@@ -85,6 +84,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
             {/* Name */}
             <Text style={styles.name}>{user?.name || 'Guest'}</Text>
+            {user?.email ? <Text style={styles.subContact}>{user.email}</Text> : null}
+            {!user?.email && user?.phone ? (
+              <Text style={styles.subContact}>{user.phone}</Text>
+            ) : null}
 
             {/* Style Tags - Pill shaped */}
             <View style={styles.tagsContainer}>
@@ -233,10 +236,16 @@ const styles = StyleSheet.create({
   name: {
     ...typography.title1,
     color: '#111111',
-    marginBottom: 12,
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
-  
+  subContact: {
+    ...typography.subheadline,
+    color: '#555555',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+
   // Style Tags - Pink pill shaped
   tagsContainer: {
     flexDirection: 'row',

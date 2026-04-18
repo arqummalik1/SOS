@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   TextInput,
-  Dimensions,
   Platform,
   StatusBar,
   Image,
   useWindowDimensions,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -20,6 +20,9 @@ import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { ApiError } from '../../api/errors';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 interface BodyMeasurementsScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'BodyMeasurements'>;
@@ -61,15 +64,72 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
 
   const [selectedType, setSelectedType] = useState<string>('pear');
   const [customValue, setCustomValue] = useState('Pear');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
-  const handleContinue = () => {
+  const resolveBodyShapePayload = useCallback(() => {
+    const selectedCard = bodyTypes.find((b) => b.id === selectedType);
+    const cardName = selectedCard?.name ?? '';
+    const customTrim = customValue.trim();
+    const customForApi =
+      customTrim.length > 0 && customTrim.toLowerCase() !== cardName.toLowerCase() ? customTrim : '';
+    const displayBodyshape = customTrim.length > 0 ? customTrim : selectedType;
+    return {
+      bodyShape: selectedType,
+      customBodyShape: customForApi,
+      displayBodyshape,
+    };
+  }, [selectedType, customValue]);
+
+  const handleContinue = useCallback(async () => {
+    if (isSubmittingRef.current) {
+      return;
+    }
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    const { bodyShape, customBodyShape, displayBodyshape } = resolveBodyShapePayload();
+    try {
+      const result = await userService.saveOnboardingBodyShape({
+        bodyShape,
+        customBodyShape,
+      });
+      notify({ type: 'success', message: result.message });
+      navigation.navigate('StylePreferences', {
+        profileData: {
+          ...profileData,
+          bodyshape: displayBodyshape,
+          bodyShapeApi: bodyShape,
+          customBodyShapeApi: customBodyShape,
+        },
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('[SOS_ONBOARDING] BodyMeasurements save failed', {
+          code: error.code,
+          status: error.status,
+          details: error.details,
+        });
+      } else {
+        console.error('[SOS_ONBOARDING] BodyMeasurements save failed', error);
+      }
+      const message =
+        error instanceof Error ? error.message : 'Could not save body shape. Please try again.';
+      notify({ type: 'error', message });
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  }, [navigation, profileData, resolveBodyShapePayload]);
+
+  const handleSkip = useCallback(() => {
+    const { displayBodyshape } = resolveBodyShapePayload();
     navigation.navigate('StylePreferences', {
       profileData: {
         ...profileData,
-        bodyshape: customValue.trim() !== '' ? customValue : selectedType,
+        bodyshape: displayBodyshape,
       },
     });
-  };
+  }, [navigation, profileData, resolveBodyShapePayload]);
 
   const handleBack = () => {
     navigation.goBack();
@@ -170,22 +230,33 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
                 style={styles.backButton}
                 onPress={handleBack}
                 activeOpacity={0.7}
+                disabled={isSubmitting}
               >
                 <Ionicons name="chevron-back" size={24} color="#000000" />
               </TouchableOpacity>
 
               {/* Black Continue Button */}
               <TouchableOpacity
-                style={styles.continueButton}
+                style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
                 onPress={handleContinue}
                 activeOpacity={0.9}
+                disabled={isSubmitting}
               >
-                <Text style={styles.continueText}>Continue</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={styles.continueText}>Continue</Text>
+                )}
               </TouchableOpacity>
             </View>
 
             {/* Skip link */}
-            <TouchableOpacity style={styles.skipLink} activeOpacity={0.6}>
+            <TouchableOpacity
+              style={styles.skipLink}
+              activeOpacity={0.6}
+              onPress={handleSkip}
+              disabled={isSubmitting}
+            >
               <Text style={styles.skipText}>Skip for now</Text>
             </TouchableOpacity>
           </View>
@@ -389,11 +460,15 @@ const styles = StyleSheet.create({
     borderRadius: 15, // Mentioned as 15px by user previously
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 60,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
+  },
+  continueButtonDisabled: {
+    opacity: 0.75,
   },
   continueText: {
     fontFamily: fontNames.bold,
