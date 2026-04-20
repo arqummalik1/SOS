@@ -7,7 +7,6 @@ import {
   Image,
   Platform,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -16,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
 import { fontNames } from '../../theme/fonts';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { notify } from '../../utils/notify';
 
 interface FullBodyPhotoScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'FullBodyPhoto'>;
@@ -48,7 +48,11 @@ export const FullBodyPhotoScreen: React.FC<FullBodyPhotoScreenProps> = ({ naviga
   const handleUploadImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert('Permission Needed', 'Photo library access is required to select a full body photo.');
+      notify({
+        type: 'error',
+        title: 'Permission Needed',
+        message: 'Photo library access is required to select a full body photo.',
+      });
       return;
     }
 
@@ -67,7 +71,10 @@ export const FullBodyPhotoScreen: React.FC<FullBodyPhotoScreenProps> = ({ naviga
       });
     } catch (error) {
       console.error('[SOS_FULL_BODY_IMAGE] gallery launch failed', error);
-      Alert.alert('Error', 'Could not open your photo library. Please try again.');
+      notify({
+        type: 'error',
+        message: 'Could not open your photo library. Please try again.',
+      });
       return;
     }
 

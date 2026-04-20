@@ -23,11 +23,29 @@ type RefreshResponse = {
 let refreshPromise: Promise<string | null> | null = null;
 
 const logApi = (level: 'info' | 'error', message: string, meta?: Record<string, unknown>) => {
-  const payload = meta ? ` ${JSON.stringify(meta)}` : '';
+  const lower = message.toLowerCase();
+  const icon =
+    level === 'error'
+      ? '❌'
+      : lower.includes('request')
+        ? '🛜'
+        : lower.includes('response')
+          ? '📥'
+          : 'ℹ️';
+  const outputMessage = `${icon} [SOS_API] ${message}`;
+
   if (level === 'error') {
-    console.error(`[SOS_API] ${message}${payload}`);
+    if (meta) {
+      console.error(outputMessage, meta);
+      return;
+    }
+    console.error(outputMessage);
   } else {
-    console.log(`[SOS_API] ${message}${payload}`);
+    if (meta) {
+      console.log(outputMessage, meta);
+      return;
+    }
+    console.log(outputMessage);
   }
 };
 
@@ -87,6 +105,38 @@ const buildQueryString = (params?: QueryParams): string => {
   return serialized ? `?${serialized}` : '';
 };
 
+const normalizeEndpointPath = (endpoint: string): string => endpoint.split('?')[0] ?? endpoint;
+
+const resolveEndpointLabel = (endpoint: string): string => {
+  const path = normalizeEndpointPath(endpoint).toLowerCase();
+  if (path.startsWith('/wardrobe/folders')) return 'Wardrobe Folders';
+  if (path.startsWith('/wardrobe/items')) return 'Wardrobe Items';
+  if (path.startsWith('/wardrobe/search')) return 'Wardrobe Search';
+  if (path.startsWith('/wardrobe/outfits')) return 'Wardrobe Outfits';
+  if (path.startsWith('/wardrobe/saved-outfits')) return 'Wardrobe Saved Outfits';
+  if (path.startsWith('/wardrobe')) return 'Wardrobe';
+  if (path.startsWith('/auth')) return 'Auth';
+  if (path.startsWith('/onboarding')) return 'Onboarding';
+  if (path.startsWith('/profile')) return 'Profile';
+  if (path.startsWith('/users')) return 'Users';
+  if (path.startsWith('/virtual-tryon')) return 'Virtual Try-On';
+  if (path.startsWith('/payments')) return 'Payments';
+  if (path.startsWith('/logout')) return 'Session';
+  return 'General API';
+};
+
+const buildRequestLogLabel = (method: HttpMethod, endpoint: string): string =>
+  `[${resolveEndpointLabel(endpoint)}] ${method} ${normalizeEndpointPath(endpoint)} request`;
+
+const buildResponseLogLabel = (
+  method: HttpMethod,
+  endpoint: string,
+  kind: 'success' | 'error'
+): string =>
+  `[${resolveEndpointLabel(endpoint)}] ${method} ${normalizeEndpointPath(endpoint)} ${
+    kind === 'success' ? 'response' : 'error'
+  }`;
+
 const parseResponseBody = async (response: Response): Promise<unknown> => {
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
@@ -139,25 +189,39 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     const timeoutHandle = createTimeoutSignal(API_CONFIG.timeoutMs);
     const refreshUrl = buildApiUrl(API_ENDPOINTS.auth.refreshToken);
+    const refreshBody = getRefreshTokenBody(refreshToken);
     try {
-      logApi('info', `→ POST ${refreshUrl}`, { bodyType: 'json', skipAuth: true });
+      logApi('info', buildRequestLogLabel('POST', API_ENDPOINTS.auth.refreshToken), {
+        url: refreshUrl,
+        skipAuth: true,
+        bodyType: 'json',
+        requestData: refreshBody,
+      });
       const response = await fetch(refreshUrl, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(getRefreshTokenBody(refreshToken)),
+        body: JSON.stringify(refreshBody),
         signal: timeoutHandle.signal,
       });
 
       const payload = (await parseResponseBody(response)) as RefreshResponse | { data?: RefreshResponse } | null;
       if (!response.ok) {
-        logApi('error', `✗ POST ${refreshUrl}`, { status: response.status, details: payload });
+        logApi('error', buildResponseLogLabel('POST', API_ENDPOINTS.auth.refreshToken, 'error'), {
+          url: refreshUrl,
+          status: response.status,
+          responseData: payload,
+        });
         await tokenManager.clearTokens();
         return null;
       }
-      logApi('info', `✓ POST ${refreshUrl}`, { status: response.status });
+      logApi('info', buildResponseLogLabel('POST', API_ENDPOINTS.auth.refreshToken, 'success'), {
+        url: refreshUrl,
+        status: response.status,
+        responseData: payload,
+      });
 
       const normalized: RefreshResponse | null =
         payload && typeof payload === 'object' && 'data' in payload && payload.data
@@ -182,7 +246,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
       return nextAccessToken;
     } catch (error) {
       const normalized = toApiError(error);
-      logApi('error', `✗ POST ${refreshUrl}`, {
+      logApi('error', buildResponseLogLabel('POST', API_ENDPOINTS.auth.refreshToken, 'error'), {
+        url: refreshUrl,
         code: normalized.code,
         message: normalized.message,
       });
@@ -228,9 +293,12 @@ const request = async <T>(endpoint: string, options: InternalRequestOptions = {}
       headers['Content-Type'] = 'application/json';
     }
 
-    logApi('info', `→ ${method} ${url}`, {
+    logApi('info', buildRequestLogLabel(method, endpoint), {
+      url,
       skipAuth: Boolean(options.skipAuth),
       bodyType: hasBody ? (isFormData ? 'multipart/form-data' : 'json') : 'none',
+      query: options.query ?? null,
+      requestData: hasBody ? (options.body as unknown) : null,
     });
 
     const response = await fetch(url, {
@@ -242,7 +310,11 @@ const request = async <T>(endpoint: string, options: InternalRequestOptions = {}
 
     const payload = await parseResponseBody(response);
     if (response.ok) {
-      logApi('info', `✓ ${method} ${url}`, { status: response.status });
+      logApi('info', buildResponseLogLabel(method, endpoint, 'success'), {
+        url,
+        status: response.status,
+        responseData: payload,
+      });
       return (payload as T) ?? ({} as T);
     }
 
@@ -255,17 +327,19 @@ const request = async <T>(endpoint: string, options: InternalRequestOptions = {}
     }
 
     const httpError = toHttpStatusError(response.status, payload);
-    logApi('error', `✗ ${method} ${url}`, {
+    logApi('error', buildResponseLogLabel(method, endpoint, 'error'), {
+      url,
       status: response.status,
       code: httpError.code,
       message: httpError.message,
-      details: payload,
+      responseData: payload,
     });
     throw httpError;
   } catch (error) {
     const normalized = error instanceof ApiError ? error : toApiError(error);
     if (!(error instanceof ApiError)) {
-      logApi('error', `✗ ${method} ${url}`, {
+      logApi('error', buildResponseLogLabel(method, endpoint, 'error'), {
+        url,
         code: normalized.code,
         message: normalized.message,
         name: normalized.name,

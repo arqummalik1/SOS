@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -32,11 +32,11 @@ interface BodyMeasurementsScreenProps {
 interface BodyType {
   id: string;
   name: string;
-  // Fallback placeholder images from assets/images/mosaic
+  // API icon URL or local fallback image.
   image: any;
 }
 
-const bodyTypes: BodyType[] = [
+const DEFAULT_BODY_TYPES: BodyType[] = [
   { id: 'apple', name: 'Apple', image: require('../../../assets/BodyShape/Apple.png') },
   { id: 'rectangle', name: 'Rectangle', image: require('../../../assets/BodyShape/Rectangle.png') },
   { id: 'triangle', name: 'Triangle', image: require('../../../assets/BodyShape/Triangle.png') },
@@ -62,10 +62,54 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
   const { width } = useWindowDimensions();
   const profileData = route.params?.profileData;
 
-  const [selectedType, setSelectedType] = useState<string>('pear');
-  const [customValue, setCustomValue] = useState('Pear');
+  const [bodyTypes, setBodyTypes] = useState<BodyType[]>(DEFAULT_BODY_TYPES);
+  const [selectedType, setSelectedType] = useState<string>(DEFAULT_BODY_TYPES[0]?.id ?? '');
+  const [customValue, setCustomValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
   const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const fallbackByKey = new Map(DEFAULT_BODY_TYPES.map((shape) => [shape.id, shape]));
+
+    const loadBodyShapeOptions = async () => {
+      setIsLoadingOptions(true);
+      try {
+        const options = await userService.getOnboardingOptions();
+        if (!mounted || options.bodyShapes.length === 0) {
+          return;
+        }
+        const nextBodyTypes = options.bodyShapes.map((shape) => ({
+          id: shape.key,
+          name: shape.label,
+          image:
+            (shape.imageUrl ? { uri: shape.imageUrl } : null) ??
+            fallbackByKey.get(shape.key)?.image ??
+            require('../../../assets/BodyShape/pear.png'),
+        }));
+        setBodyTypes(nextBodyTypes);
+        setSelectedType((prev) =>
+          nextBodyTypes.some((shape) => shape.id === prev) ? prev : nextBodyTypes[0].id
+        );
+      } catch (error) {
+        console.warn('[SOS_ONBOARDING] Could not load body shape options, using defaults', error);
+        notify({
+          type: 'error',
+          message: 'Could not load body shape options from the server. Using default options.',
+        });
+      } finally {
+        if (mounted) {
+          setIsLoadingOptions(false);
+        }
+      }
+    };
+
+    loadBodyShapeOptions();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const resolveBodyShapePayload = useCallback(() => {
     const selectedCard = bodyTypes.find((b) => b.id === selectedType);
@@ -85,6 +129,10 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
     if (isSubmittingRef.current) {
       return;
     }
+    if (!selectedType) {
+      notify({ type: 'error', message: 'Please select a body shape.' });
+      return;
+    }
     isSubmittingRef.current = true;
     setIsSubmitting(true);
     const { bodyShape, customBodyShape, displayBodyshape } = resolveBodyShapePayload();
@@ -93,6 +141,9 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
         bodyShape,
         customBodyShape,
       });
+      if (!result.success) {
+        throw new Error(result.message || 'Could not save body shape.');
+      }
       notify({ type: 'success', message: result.message });
       navigation.navigate('StylePreferences', {
         profileData: {
@@ -215,7 +266,7 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
                 style={styles.textInput}
                 value={customValue}
                 onChangeText={setCustomValue}
-                placeholder="Pear"
+                placeholder={bodyTypes.find((shape) => shape.id === selectedType)?.name ?? 'Body shape'}
                 placeholderTextColor="#A0A0A0"
                 selectionColor="#000000"
               />
@@ -230,7 +281,7 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
                 style={styles.backButton}
                 onPress={handleBack}
                 activeOpacity={0.7}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoadingOptions}
               >
                 <Ionicons name="chevron-back" size={24} color="#000000" />
               </TouchableOpacity>
@@ -240,7 +291,7 @@ export const BodyMeasurementsScreen: React.FC<BodyMeasurementsScreenProps> = ({ 
                 style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
                 onPress={handleContinue}
                 activeOpacity={0.9}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoadingOptions}
               >
                 {isSubmitting ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />

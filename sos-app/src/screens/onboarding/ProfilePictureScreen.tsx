@@ -28,6 +28,9 @@ export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navi
     try {
       setIsUploading(true);
       const uploadResult = await userService.uploadProfileImage(uri);
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.message || 'Failed to upload profile image.');
+      }
       console.log('[SOS_PROFILE_IMAGE] screen: upload finished, navigating to ProfileSetup', {
         serverMessage: uploadResult.message,
         usingServerUrl: Boolean(uploadResult.profileImageUrl),

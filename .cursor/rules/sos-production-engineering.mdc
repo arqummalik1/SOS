@@ -44,7 +44,6 @@ Treat **sos-app** as **production software**: **highly scalable**, maintainable,
 ## After you change code — reply format
 
 - **Plain-English** summary: what / where / how to verify; optional **What’s next** if blocked or user-dependent.  
-- **Mermaid flowchart** only for **in-app user-flow** work (onboarding, auth, multi-screen journeys, matching screen→service→API diagrams)—not for tiny refactors or lint-only edits.
 
 ---
 

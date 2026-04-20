@@ -259,6 +259,7 @@ export const authService = {
 
   async getOnboardingStatus(): Promise<OnboardingStatus> {
     if (shouldUseMock()) {
+      console.log('[SOS_AUTH] mock GET onboarding/status used');
       return {
         isOnboardingComplete: false,
         steps: {},
@@ -266,15 +267,20 @@ export const authService = {
       };
     }
 
+    console.log('[SOS_AUTH] GET onboarding/status started', {
+      endpoint: API_ENDPOINTS.onboarding.status,
+    });
     const response = await apiClient.get<AuthResponseEnvelope<OnboardingStatusResponseData>>(
       API_ENDPOINTS.onboarding.status
     );
 
-    return {
+    const normalized = {
       isOnboardingComplete: Boolean(response.data?.is_onboarding_complete),
       steps: response.data?.steps ?? {},
       message: response.message,
     };
+    console.log('[SOS_AUTH] GET onboarding/status success', normalized);
+    return normalized;
   },
 
   async logout(): Promise<void> {

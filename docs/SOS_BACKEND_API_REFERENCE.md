@@ -212,7 +212,7 @@ curl --request POST \
 ### `GET /onboarding/options`
 
 - **Doc title(s):** Onboarding Options
-- **App status:** **not_integrated** — Static onboarding UI; no GET options yet
+- **App status:** **integrated** — `userService.getOnboardingOptions` is consumed by `StylePreferencesScreen` (skin tones + styles) and `BodyMeasurementsScreen` (body shapes)
 - **Auth:** Bearer access token
 - **cURL (from doc):**
 ```bash

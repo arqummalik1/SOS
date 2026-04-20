@@ -7,7 +7,6 @@ import {
   Image,
   Animated,
   Platform,
-  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -17,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { notify } from '../../utils/notify';
 
 interface FullBodyCameraScreenProps {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'FullBodyCamera'>;
@@ -78,7 +78,7 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
         });
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
+      notify({ type: 'error', message: 'Failed to capture image. Please try again.' });
     }
   };
 
@@ -86,7 +86,11 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
   const openGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (perm.status !== ImagePicker.PermissionStatus.GRANTED) {
-      Alert.alert('Permission Needed', 'Photo library access is required to select a full body photo.');
+      notify({
+        type: 'error',
+        title: 'Permission Needed',
+        message: 'Photo library access is required to select a full body photo.',
+      });
       return;
     }
 
@@ -105,7 +109,10 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
       });
     } catch (error) {
       console.error('[SOS_FULL_BODY_IMAGE] gallery launch failed', error);
-      Alert.alert('Error', 'Could not open your photo library. Please try again.');
+      notify({
+        type: 'error',
+        message: 'Could not open your photo library. Please try again.',
+      });
       return;
     }
 

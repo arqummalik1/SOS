@@ -13,6 +13,7 @@ import { FullBodyCameraScreen } from '../screens/onboarding/FullBodyCameraScreen
 import { FullBodyPhotoPreviewScreen } from '../screens/onboarding/FullBodyPhotoPreviewScreen';
 import { StylePreferencesScreen } from '../screens/onboarding/StylePreferencesScreen';
 import { BodyMeasurementsScreen } from '../screens/onboarding/BodyMeasurementsScreen';
+import { useAuth } from '../store/AuthContext';
 
 export type AuthStackParamList = {
   First: undefined;
@@ -33,13 +34,20 @@ export type AuthStackParamList = {
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator: React.FC = () => {
+  const { state } = useAuth();
+  const initialRouteName = state.isAuthenticated && !state.isOnboarded
+    ? state.onboardingEntryRoute
+    : 'First';
+  const navigatorKey = `${state.isAuthenticated}-${state.isOnboarded}-${initialRouteName}`;
+
   return (
     <Stack.Navigator
+      key={navigatorKey}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
       }}
-      initialRouteName="First"
+      initialRouteName={initialRouteName}
     >
       <Stack.Screen name="First" component={FirstScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />

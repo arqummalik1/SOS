@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
     logout: '/logout',
   },
   onboarding: {
+    options: '/onboarding/options',
     status: '/onboarding/status',
     profileImage: '/onboarding/profile-image',
     fullBodyImage: '/onboarding/full-body-image',
