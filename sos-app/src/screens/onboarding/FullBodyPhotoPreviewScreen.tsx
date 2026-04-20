@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,8 +10,10 @@ import {
   StatusBar,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
@@ -20,13 +22,18 @@ const { width } = Dimensions.get('window');
 
 interface FullBodyPhotoPreviewScreenProps {
   navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<any, 'FullBodyPhotoPreview'>;
 }
 
 /**
  * FullBodyPhotoPreviewScreen - Replicates "Profile setup 1.2.png" with 100% visual fidelity.
  * Shows a large preview of the uploaded full-body photo.
  */
-export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProps> = ({ navigation }) => {
+export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProps> = ({ navigation, route }) => {
+  const fullBodyImage = route.params?.fullBodyImage;
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+
   return (
     <SafeContainer style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -67,8 +74,8 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
               </View>
             )}
             {/* Actual image with error handling */}
-            <Image 
-              source={require('../../../assets/images/mosaic/fashion1.jpg')}
+            <Image
+              source={fullBodyImage && !imageError ? { uri: fullBodyImage } : require('../../../assets/images/mosaic/fashion1.jpg')}
               style={[
                 styles.previewImage,
                 (imageLoading || (imageError && !fullBodyImage)) && styles.imageHidden,
@@ -217,5 +224,40 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  imageHidden: {
+    opacity: 0,
+  },
+  imageLoadingPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: fontNames.regular,
+    fontSize: 14,
+    color: '#666666',
+  },
+  imageErrorPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: {
+    fontFamily: fontNames.regular,
+    fontSize: 14,
+    color: '#999999',
   },
 });
