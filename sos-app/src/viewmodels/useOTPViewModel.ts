@@ -83,6 +83,7 @@ export const useOTPViewModel = () => {
       async () => {
         const message = await resendOTP();
         startTimer();
+        setOtp(['', '', '', '', '', '']);
         return message;
       },
       {
