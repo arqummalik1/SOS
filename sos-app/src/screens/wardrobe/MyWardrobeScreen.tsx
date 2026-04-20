@@ -19,6 +19,7 @@ import { typography } from '../../theme/typography';
 import { gradients } from '../../theme/gradients';
 import { WardrobeStackParamList } from '../../navigation/WardrobeStackNavigator';
 import { wardrobeFolderService } from '../../services/wardrobeFolderService';
+import { wardrobeItemService } from '../../services/wardrobeItemService';
 import { WardrobeFolder } from '../../models/WardrobeFolder.model';
 import { useAuth } from '../../store/AuthContext';
 import { ApiError } from '../../api/errors';
@@ -100,6 +101,8 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [searchMatchedFolderIds, setSearchMatchedFolderIds] = useState<Set<string> | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   const loadFolders = useCallback(
     async (mode: 'initial' | 'refresh' | 'silent') => {
@@ -140,11 +143,69 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
     }, [loadFolders])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const query = searchQuery.trim();
+      if (!query) {
+        setSearchMatchedFolderIds(null);
+        setIsSearching(false);
+        return () => {
+          cancelled = true;
+          if (timer) {
+            clearTimeout(timer);
+          }
+        };
+      }
+
+      timer = setTimeout(() => {
+        void (async () => {
+          setIsSearching(true);
+          try {
+            const rows = await wardrobeItemService.searchItems(query, 50);
+            if (cancelled) {
+              return;
+            }
+            const matched = new Set(
+              rows
+                .map((item) => item.folderId?.trim())
+                .filter((id): id is string => Boolean(id))
+            );
+            setSearchMatchedFolderIds(matched);
+          } catch (error) {
+            if (!cancelled) {
+              logSosError(LOG, 'searchItems', error, 'warn');
+              setSearchMatchedFolderIds(new Set());
+            }
+          } finally {
+            if (!cancelled) {
+              setIsSearching(false);
+            }
+          }
+        })();
+      }, 280);
+
+      return () => {
+        cancelled = true;
+        if (timer) {
+          clearTimeout(timer);
+        }
+      };
+    }, [searchQuery])
+  );
+
   const filteredFolders = useMemo(() => {
+    const query = searchQuery.trim();
+    if (!query) {
+      return folders.filter((f) => matchesFilter(f, selectedFilter));
+    }
     return folders.filter(
-      (f) => matchesFilter(f, selectedFilter) && matchesSearch(f, searchQuery)
+      (f) =>
+        matchesFilter(f, selectedFilter) &&
+        (matchesSearch(f, query) || Boolean(searchMatchedFolderIds?.has(f.id)))
     );
-  }, [folders, selectedFilter, searchQuery]);
+  }, [folders, selectedFilter, searchQuery, searchMatchedFolderIds]);
 
   const openFolder = (folder: WardrobeFolder) => {
     navigation.navigate('MyItems', {
@@ -194,6 +255,12 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
             <FilterGlyph />
           </TouchableOpacity>
         </View>
+        {isSearching ? (
+          <View style={styles.searchStatusRow}>
+            <ActivityIndicator size="small" color="#8C728F" />
+            <Text style={styles.searchStatusText}>Searching wardrobe...</Text>
+          </View>
+        ) : null}
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {FILTERS.map((filter) => {
@@ -441,6 +508,17 @@ const styles = StyleSheet.create({
     marginTop: 32,
     alignItems: 'center',
     gap: 10,
+  },
+  searchStatusRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  searchStatusText: {
+    ...typography.footnote,
+    color: '#666666',
   },
   loadingCaption: {
     ...typography.footnote,

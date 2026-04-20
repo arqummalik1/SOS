@@ -26,7 +26,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.arqummalik1.sosMobile"
+      "package": "com.arqummalik1.sosMobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -54,6 +60,12 @@
           "recordAudioAndroid": false
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/bcc5df5d-719f-46f0-ab1e-be7b1d7d3ea9"
+    }
   }
 }

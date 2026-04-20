@@ -9,7 +9,6 @@ import {
   Platform,
   StatusBar,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,11 +45,21 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
 
     setIsUploading(true);
     try {
-      await userService.uploadFullBodyImage(fullBodyImage);
+      const result = await userService.uploadFullBodyImage(fullBodyImage);
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to upload full-body image.');
+      }
+      notify({ type: 'success', message: result.message });
       navigation.navigate('BodyMeasurements', { profileData });
     } catch (error) {
       console.error('[SOS_FULL_BODY_PREVIEW] Upload error:', error);
-      notify({ type: 'error', message: 'Failed to upload full-body image. Please try again.' });
+      notify({
+        type: 'error',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to upload full-body image. Please try again.',
+      });
     } finally {
       setIsUploading(false);
     }

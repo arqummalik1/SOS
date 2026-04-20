@@ -5,6 +5,7 @@ import {
   Image,
   ImageSourcePropType,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StatusBar,
@@ -28,6 +29,13 @@ import { notify } from '../../utils/notify';
 import { logSosError } from '../../utils/logSosError';
 
 const LOG = '[SOS_EDIT_ITEM_DETAILS]';
+const WheelColorPickerModule = require('react-native-wheel-color-picker');
+const WheelColorPicker =
+  (WheelColorPickerModule &&
+    (WheelColorPickerModule.default ??
+      WheelColorPickerModule.ColorPicker ??
+      WheelColorPickerModule)) ||
+  null;
 
 const { width } = Dimensions.get('window');
 
@@ -138,10 +146,34 @@ const FRONT_THUMB_IMAGE = require('../../../assets/EditItemDetails/trendy-top-de
 const BACK_IMAGE = require('../../../assets/EditItemDetails/d16fbbf0-d5c4-405c-8740-c0574a48c79d 1.png');
 const BACK_THUMB_IMAGE = require('../../../assets/EditItemDetails/Frame 1000006728.png');
 
+const TOP_ONLY_SHADOW = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  // Android elevation always casts mostly bottom shadow; use subtle top border instead.
+  android: {
+    elevation: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0, 0, 0, 0.12)',
+  },
+  default: {},
+}) ?? {};
+
 const INITIAL_DESCRIPTION =
   "One very important aspect of describing attire well is understanding why you're describing it in the first place.";
 
 const materialToApi = (m: string) => m.trim().toLowerCase();
+
+const normalizeHexColor = (value: string): string | null => {
+  const hex = value.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return `#${hex.toUpperCase()}`;
+  }
+  return null;
+};
 
 const sizeToApi = (s: string) => {
   const parts = s.split('|');
@@ -189,6 +221,8 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
   const [selectedThumbnail, setSelectedThumbnail] = useState<'front' | 'back' | 'add'>('front');
   const [activeDropdown, setActiveDropdown] = useState<DropdownFieldKey | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showColorPickerModal, setShowColorPickerModal] = useState(false);
+  const [customColorDraft, setCustomColorDraft] = useState(COLOR_SWATCHES[0]);
 
   const [resolvedFolderId, setResolvedFolderId] = useState<string | null>(null);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
@@ -269,7 +303,9 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
         setPurchasePrice(it.purchasePrice?.trim() ? it.purchasePrice : '0');
         const catKey = normalizeWardrobeItemCategory(it.category);
         setCategory(API_TO_CATEGORY_LABEL[catKey] ?? API_TO_CATEGORY_LABEL[it.category.toLowerCase()] ?? 'Top');
-        setSelectedColor(it.color && /^#/.test(it.color) ? it.color : COLOR_SWATCHES[0]);
+        const apiColor = it.color && /^#/.test(it.color) ? it.color : COLOR_SWATCHES[0];
+        setSelectedColor(apiColor);
+        setCustomColorDraft(apiColor);
         setSeason(API_TO_SEASON_LABEL[seasonsApi[0] ?? ''] ?? DROPDOWN_OPTIONS.season[0]);
         setSize(sizeLabelFromApi(it.size));
         setMaterial(materialLabelFromApi(it.material));
@@ -364,6 +400,17 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
 
   const effectiveFolderId = createParams?.folderId ?? resolvedFolderId ?? '';
 
+  const applyCustomColor = () => {
+    const normalized = normalizeHexColor(customColorDraft);
+    if (!normalized) {
+      notify({ type: 'error', message: 'Please enter a valid hex color like #C5A784.' });
+      return;
+    }
+    setSelectedColor(normalized);
+    setCustomColorDraft(normalized);
+    setShowColorPickerModal(false);
+  };
+
   const handleSave = async () => {
     if (isLegacy) {
       notify({
@@ -405,6 +452,10 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
           folder_id: effectiveFolderId,
           seasons: [SEASON_TO_API[season] ?? season.trim().toLowerCase()].filter(Boolean),
           occasions: [OCCASION_TO_API[occasion] ?? occasion.trim().toLowerCase()].filter(Boolean),
+          description: description.trim() || undefined,
+          color: selectedColor,
+          material: materialToApi(material),
+          size: sizeToApi(size),
           imageUri,
         });
         notify({ type: 'success', message: 'Item added to your wardrobe.' });
@@ -592,6 +643,55 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
         ) : null}
 
         <View style={styles.formWrap}>
+          <Field label="Category">
+            <Dropdown value={category} onPress={() => setActiveDropdown('category')} disabled={isSaving} />
+          </Field>
+
+          <Field label="Color">
+            <View style={styles.colorRow}>
+              {COLOR_SWATCHES.map((swatch, index) => {
+                const isSelected = swatch === selectedColor;
+                return (
+                  <TouchableOpacity
+                    key={`${swatch}-${index}`}
+                    style={[styles.colorDot, { backgroundColor: swatch }, isSelected && styles.colorDotSelected]}
+                    onPress={() => setSelectedColor(swatch)}
+                    activeOpacity={0.8}
+                    disabled={isSaving}
+                  />
+                );
+              })}
+              <TouchableOpacity
+                style={styles.pickColorButton}
+                onPress={() => setShowColorPickerModal(true)}
+                activeOpacity={0.85}
+                disabled={isSaving}
+              >
+                <Text style={styles.pickColorButtonText}>Pick</Text>
+              </TouchableOpacity>
+              <View style={styles.selectedColorPreview}>
+                <View style={[styles.selectedColorDot, { backgroundColor: selectedColor }]} />
+                <Text style={styles.selectedColorLabel}>{selectedColor.toUpperCase()}</Text>
+              </View>
+            </View>
+          </Field>
+
+          <Field label="Season">
+            <Dropdown value={season} onPress={() => setActiveDropdown('season')} disabled={isSaving} />
+          </Field>
+
+          <Field label="Size">
+            <Dropdown value={size} onPress={() => setActiveDropdown('size')} disabled={isSaving} />
+          </Field>
+
+          <Field label="Material">
+            <Dropdown value={material} onPress={() => setActiveDropdown('material')} disabled={isSaving} />
+          </Field>
+
+          <Field label="Occasion">
+            <Dropdown value={occasion} onPress={() => setActiveDropdown('occasion')} disabled={isSaving} />
+          </Field>
+
           <Field label="Brand">
             <TextInput
               value={brand}
@@ -613,46 +713,6 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
               keyboardType="decimal-pad"
               editable={!isSaving}
             />
-          </Field>
-
-          <Field label="Category">
-            <Dropdown value={category} onPress={() => setActiveDropdown('category')} disabled={isSaving} />
-          </Field>
-
-          <Field label="Color">
-            <View style={styles.colorRow}>
-              {COLOR_SWATCHES.map((swatch, index) => {
-                const isSelected = swatch === selectedColor;
-                return (
-                  <TouchableOpacity
-                    key={`${swatch}-${index}`}
-                    style={[styles.colorDot, { backgroundColor: swatch }, isSelected && styles.colorDotSelected]}
-                    onPress={() => setSelectedColor(swatch)}
-                    activeOpacity={0.8}
-                    disabled={isSaving}
-                  />
-                );
-              })}
-              <View style={styles.extraColorIcon}>
-                <View style={styles.extraColorCore} />
-              </View>
-            </View>
-          </Field>
-
-          <Field label="Season">
-            <Dropdown value={season} onPress={() => setActiveDropdown('season')} disabled={isSaving} />
-          </Field>
-
-          <Field label="Size">
-            <Dropdown value={size} onPress={() => setActiveDropdown('size')} disabled={isSaving} />
-          </Field>
-
-          <Field label="Material">
-            <Dropdown value={material} onPress={() => setActiveDropdown('material')} disabled={isSaving} />
-          </Field>
-
-          <Field label="Occasion">
-            <Dropdown value={occasion} onPress={() => setActiveDropdown('occasion')} disabled={isSaving} />
           </Field>
 
           <Field label="Description">
@@ -694,6 +754,64 @@ export const EditItemDetailsScreen: React.FC<EditItemDetailsScreenProps> = ({ na
             ))}
           </Pressable>
         </Pressable>
+      </Modal>
+
+      <Modal
+        visible={showColorPickerModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowColorPickerModal(false)}
+      >
+        <View style={styles.dropdownOverlay}>
+          <View style={styles.colorModal}>
+            <Text style={styles.colorModalTitle}>Choose item color</Text>
+            {WheelColorPicker ? (
+              <View style={styles.colorPickerWrap}>
+                <WheelColorPicker
+                  color={customColorDraft}
+                  onColorChange={(color: string) => {
+                    const normalized = normalizeHexColor(color);
+                    if (normalized) {
+                      setCustomColorDraft(normalized);
+                    }
+                  }}
+                  thumbSize={22}
+                  sliderSize={18}
+                  noSnap
+                  row={false}
+                />
+              </View>
+            ) : (
+              <View style={styles.colorPickerUnavailable}>
+                <Text style={styles.colorPickerUnavailableText}>
+                  Color wheel is unavailable on this runtime. Enter a HEX color below (for example: #C5A784).
+                </Text>
+              </View>
+            )}
+            <TextInput
+              style={styles.colorHexInput}
+              value={customColorDraft}
+              onChangeText={(value) => setCustomColorDraft(value.toUpperCase())}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              placeholder="#C5A784"
+              placeholderTextColor="#8C8C8C"
+              maxLength={7}
+            />
+            <View style={styles.colorModalActions}>
+              <TouchableOpacity
+                style={styles.colorModalCancel}
+                onPress={() => setShowColorPickerModal(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.colorModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.colorModalApply} onPress={applyCustomColor} activeOpacity={0.85}>
+                <Text style={styles.colorModalApplyText}>Apply</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={onCloseDeleteModal}>
@@ -834,6 +952,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#B8B8B8',
     alignItems: 'center',
     justifyContent: 'center',
+    ...TOP_ONLY_SHADOW,
   },
   zoomText: {
     ...typography.caption1,
@@ -869,13 +988,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    ...TOP_ONLY_SHADOW,
   },
   thumbnailCardSelected: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
+    ...TOP_ONLY_SHADOW,
   },
   thumbImage: {
     width: 42,
@@ -892,6 +1008,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E4DEE7',
     alignItems: 'center',
     justifyContent: 'center',
+    ...TOP_ONLY_SHADOW,
   },
   addText: {
     ...typography.largeTitle,
@@ -917,6 +1034,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 10,
     minHeight: 44,
+    ...TOP_ONLY_SHADOW,
   },
   dropdown: {
     height: 33,
@@ -926,11 +1044,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    ...TOP_ONLY_SHADOW,
   },
   dropdownValue: {
     ...typography.caption1,
@@ -944,9 +1058,10 @@ const styles = StyleSheet.create({
   colorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    height: 32,
+    gap: 10,
+    minHeight: 36,
     paddingLeft: 1,
+    flexWrap: 'wrap',
   },
   colorDot: {
     width: 16,
@@ -954,31 +1069,110 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   colorDotSelected: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
+    ...TOP_ONLY_SHADOW,
   },
-  extraColorIcon: {
-    width: 11,
-    height: 11,
-    borderRadius: 5.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 1,
+  pickColorButton: {
+    paddingHorizontal: 12,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#E8E8E8',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...TOP_ONLY_SHADOW,
   },
-  extraColorCore: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#222222',
+  pickColorButtonText: {
+    ...typography.caption1,
+    color: '#181818',
+  },
+  selectedColorPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#ECECEC',
+    ...TOP_ONLY_SHADOW,
+  },
+  selectedColorDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  selectedColorLabel: {
+    ...typography.caption1,
+    color: '#2F2F2F',
+  },
+  colorModal: {
+    borderRadius: 14,
+    backgroundColor: '#F2F2F2',
+    padding: 14,
+    ...TOP_ONLY_SHADOW,
+  },
+  colorModalTitle: {
+    ...typography.headline,
+    color: '#111111',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  colorPickerWrap: {
+    height: 200,
+  },
+  colorPickerUnavailable: {
+    borderRadius: 10,
+    backgroundColor: '#E7E7E7',
+    padding: 12,
+    marginBottom: 4,
+  },
+  colorPickerUnavailableText: {
+    ...typography.caption1,
+    color: '#4A4A4A',
+    lineHeight: 18,
+  },
+  colorHexInput: {
+    marginTop: 8,
+    ...typography.body,
+    color: '#151515',
+    backgroundColor: '#E7E7E7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    textAlign: 'center',
+    ...TOP_ONLY_SHADOW,
+  },
+  colorModalActions: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  colorModalCancel: {
+    minWidth: 84,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#E4E4E4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...TOP_ONLY_SHADOW,
+  },
+  colorModalCancelText: {
+    ...typography.subheadline,
+    color: '#333333',
+  },
+  colorModalApply: {
+    minWidth: 84,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#111111',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...TOP_ONLY_SHADOW,
+  },
+  colorModalApplyText: {
+    ...typography.subheadline,
+    color: '#FFFFFF',
   },
   descriptionInput: {
     minHeight: 83,
@@ -988,11 +1182,7 @@ const styles = StyleSheet.create({
     paddingTop: 9,
     ...typography.caption1,
     color: '#3A3A3A',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    ...TOP_ONLY_SHADOW,
   },
   bottomGap: {
     height: 112,
@@ -1010,11 +1200,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#F0F0F0',
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 6,
+    ...TOP_ONLY_SHADOW,
   },
   dropdownOption: {
     minHeight: 44,
@@ -1040,6 +1226,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 94,
     alignItems: 'center',
+    ...TOP_ONLY_SHADOW,
   },
   deleteTitle: {
     ...typography.largeTitle,
@@ -1058,11 +1245,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECECEC',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    ...TOP_ONLY_SHADOW,
   },
   notNowText: {
     ...typography.body,
@@ -1076,6 +1259,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F21510',
     justifyContent: 'center',
     alignItems: 'center',
+    ...TOP_ONLY_SHADOW,
   },
   deleteButtonText: {
     ...typography.body,

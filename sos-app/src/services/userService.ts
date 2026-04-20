@@ -104,6 +104,38 @@ type SaveSkinToneStyleResponse = {
   };
 };
 
+type OnboardingSkinToneOption = {
+  key?: string;
+  label?: string;
+  hex?: string | null;
+  row?: number;
+};
+
+type OnboardingStylePreferenceOption = {
+  key?: string;
+  label?: string;
+  description?: string;
+  image_url?: string | null;
+  tags?: string[];
+};
+
+type OnboardingBodyShapeOption = {
+  key?: string;
+  label?: string;
+  image_url?: string | null;
+  icon_url?: string | null;
+};
+
+type OnboardingOptionsResponse = {
+  success?: boolean;
+  message?: string;
+  data?: {
+    skin_tones?: OnboardingSkinToneOption[];
+    style_preferences?: OnboardingStylePreferenceOption[];
+    body_shapes?: OnboardingBodyShapeOption[];
+  };
+};
+
 type OnboardingCompleteResponse = {
   success?: boolean;
   message?: string;
@@ -113,7 +145,7 @@ type OnboardingCompleteResponse = {
 const normalizeSkinToneHex = (value: string): string => {
   let hex = value.trim().replace(/^#/, '');
   if (!hex) {
-    return '#f5d0a9';
+    return '#F5D0A9';
   }
   if (hex.length === 3 && /^[0-9a-fA-F]{3}$/.test(hex)) {
     hex = hex
@@ -122,9 +154,9 @@ const normalizeSkinToneHex = (value: string): string => {
       .join('');
   }
   if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
-    return '#f5d0a9';
+    return '#F5D0A9';
   }
-  return `#${hex.toLowerCase()}`;
+  return `#${hex.toUpperCase()}`;
 };
 
 const shouldUseMock = (): boolean => API_CONFIG.isUsingFallbackBaseUrl;
@@ -376,6 +408,108 @@ export const userService = {
     }
   },
 
+  async getOnboardingOptions(): Promise<{
+    success: boolean;
+    message: string;
+    skinTones: Array<{ key: string; label: string; hex: string | null; row: number }>;
+    bodyShapes: Array<{ key: string; label: string; imageUrl: string | null }>;
+    stylePreferences: Array<{
+      key: string;
+      label: string;
+      description: string;
+      imageUrl: string | null;
+      tags: string[];
+    }>;
+  }> {
+    const url = buildApiUrl(API_ENDPOINTS.onboarding.options);
+    console.log(`${ONBOARDING_LOG} GET onboarding/options`, { url });
+    if (shouldUseMock()) {
+      console.log(`${ONBOARDING_LOG} mock onboarding/options used`);
+      return {
+        success: true,
+        message: 'Onboarding options loaded',
+        skinTones: [
+          { key: 'porcelain', label: 'Porcelain', hex: '#F8EFE5', row: 1 },
+          { key: 'ivory', label: 'Ivory', hex: '#F5E6D3', row: 1 },
+          { key: 'fair', label: 'Fair', hex: '#F0D5B8', row: 1 },
+          { key: 'light', label: 'Light', hex: '#ECC99A', row: 1 },
+          { key: 'custom', label: 'Custom', hex: null, row: 4 },
+        ],
+        bodyShapes: [
+          { key: 'apple', label: 'Apple', imageUrl: null },
+          { key: 'rectangle', label: 'Rectangle', imageUrl: null },
+          { key: 'triangle', label: 'Triangle', imageUrl: null },
+          { key: 'hourglass', label: 'Hourglass', imageUrl: null },
+          { key: 'inverted_triangle', label: 'Inverted Triangle', imageUrl: null },
+          { key: 'pear', label: 'Pear', imageUrl: null },
+        ],
+        stylePreferences: [
+          { key: 'casual', label: 'Casual', description: 'Relaxed everyday looks', imageUrl: null, tags: [] },
+          { key: 'formal', label: 'Formal', description: 'Professional and polished', imageUrl: null, tags: [] },
+          { key: 'sporty', label: 'Sporty', description: 'Active and athleisure inspired', imageUrl: null, tags: [] },
+        ],
+      };
+    }
+
+    try {
+      const response = await apiClient.get<OnboardingOptionsResponse>(API_ENDPOINTS.onboarding.options);
+      const skinTones = (response.data?.skin_tones ?? [])
+        .map((tone) => ({
+          key: String(tone.key ?? ''),
+          label: String(tone.label ?? tone.key ?? ''),
+          hex: typeof tone.hex === 'string' ? normalizeSkinToneHex(tone.hex) : null,
+          row: typeof tone.row === 'number' ? tone.row : 0,
+        }))
+        .filter((tone) => tone.key.length > 0);
+      const stylePreferences = (response.data?.style_preferences ?? [])
+        .map((style) => ({
+          key: String(style.key ?? ''),
+          label: String(style.label ?? style.key ?? ''),
+          description: String(style.description ?? ''),
+          imageUrl: resolveProfileMediaUrl(style.image_url ?? undefined) ?? null,
+          tags: Array.isArray(style.tags) ? style.tags.map((tag) => String(tag)) : [],
+        }))
+        .filter((style) => style.key.length > 0);
+      const bodyShapes = (response.data?.body_shapes ?? [])
+        .map((shape) => ({
+          key: String(shape.key ?? ''),
+          label: String(shape.label ?? shape.key ?? ''),
+          imageUrl:
+            resolveProfileMediaUrl(shape.image_url ?? undefined) ??
+            resolveProfileMediaUrl(shape.icon_url ?? undefined) ??
+            null,
+        }))
+        .filter((shape) => shape.key.length > 0);
+
+      const normalized = {
+        success: response.success ?? true,
+        message: response.message ?? 'Onboarding options loaded',
+        skinTones,
+        bodyShapes,
+        stylePreferences,
+      };
+      console.log(`${ONBOARDING_LOG} onboarding/options OK`, {
+        skinToneCount: normalized.skinTones.length,
+        styleCount: normalized.stylePreferences.length,
+        bodyShapeCount: normalized.bodyShapes.length,
+        message: normalized.message,
+      });
+      return normalized;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error(`${ONBOARDING_LOG} onboarding/options failed`, {
+          code: error.code,
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error(`${ONBOARDING_LOG} onboarding/options failed`, error);
+      }
+      throw error;
+    }
+  },
+
   async uploadProfileImage(profileImageUri: string): Promise<{
     success: boolean;
     message: string;
@@ -542,12 +676,17 @@ export const userService = {
     user?: User;
   }> {
     if (shouldUseMock()) {
+      console.log(`${ONBOARDING_LOG} mock basic-details PATCH skipped`, payload);
       return {
         success: true,
         message: 'Basic details saved successfully',
       };
     }
 
+    console.log(`${ONBOARDING_LOG} PATCH onboarding/basic-details`, {
+      url: buildApiUrl(API_ENDPOINTS.onboarding.basicDetails),
+      payloadKeys: Object.keys(payload),
+    });
     const response = await apiClient.patch<SaveBasicDetailsResponse>(
       API_ENDPOINTS.onboarding.basicDetails,
       payload
@@ -558,11 +697,17 @@ export const userService = {
         ? response.data.user
         : response.data;
 
-    return {
+    const normalized = {
       success: response.success ?? true,
       message: response.message ?? 'Basic details saved successfully',
       user: userPayload ? toUser(userPayload as ApiUser) : undefined,
     };
+    console.log(`${ONBOARDING_LOG} basic-details OK`, {
+      success: normalized.success,
+      message: normalized.message,
+      hasUser: Boolean(normalized.user),
+    });
+    return normalized;
   },
 
   async saveOnboardingBodyShape(params: {
@@ -645,10 +790,18 @@ export const userService = {
     });
 
     try {
+      console.log(`${ONBOARDING_LOG} Sending PATCH request with FormData...`);
       const response = await apiClient.patch<SaveSkinToneStyleResponse>(
         API_ENDPOINTS.onboarding.skinToneStyle,
-        form
+        form,
+        {
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
       );
+      console.log(`${ONBOARDING_LOG} Raw response:`, response);
+      
       const normalized = {
         success: response.success ?? true,
         message: response.message ?? 'Skin tone and style preferences saved successfully',

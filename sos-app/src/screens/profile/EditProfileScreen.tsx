@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -34,16 +34,20 @@ export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation
   const [dob, setDob] = useState(user?.dob ?? '');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    setName(user.name ?? '');
+    setHeight(user.height ?? '');
+    setWeight(user.weight ?? '');
+    setDob(user.dob ?? '');
+  }, [user]);
+
   useFocusEffect(
     useCallback(() => {
       void refreshProfile().catch(() => undefined);
-      if (user) {
-        setName(user.name ?? '');
-        setHeight(user.height ?? '');
-        setWeight(user.weight ?? '');
-        setDob(user.dob ?? '');
-      }
-    }, [refreshProfile, user])
+    }, [refreshProfile])
   );
 
   const handleSave = async () => {

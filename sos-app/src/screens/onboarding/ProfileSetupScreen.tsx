@@ -151,6 +151,9 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigati
         weight: normalizedWeight,
         date_of_birth: dateOfBirth,
       });
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to save basic details.');
+      }
 
       notify({ type: 'success', message: result.message });
       navigation.navigate('FullBodyPhoto', {

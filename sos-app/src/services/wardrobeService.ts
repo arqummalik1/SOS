@@ -7,6 +7,8 @@ import { Outfit } from '../models/Outfit.model';
 type ApiOutfit = Partial<Outfit> & { _id?: string };
 
 const shouldUseMock = (): boolean => API_CONFIG.isUsingFallbackBaseUrl;
+let remoteOutfitRoutesUnavailable = false;
+let remoteOutfitRoutesWarningShown = false;
 
 const toOutfit = (input: ApiOutfit): Outfit => ({
   id: input.id ?? input._id ?? '',
@@ -43,9 +45,23 @@ const unwrapItems = <T>(input: unknown): T[] => {
 const isWardrobeUnavailable = (error: unknown): boolean =>
   error instanceof ApiError && (error.code === 'NOT_FOUND' || error.code === 'FORBIDDEN');
 
+const canUseRemoteOutfitRoutes = (): boolean =>
+  !shouldUseMock() && wardrobeOutfitRemoteApiEnabled && !remoteOutfitRoutesUnavailable;
+
+const markRemoteOutfitRoutesUnavailable = (error: unknown) => {
+  remoteOutfitRoutesUnavailable = true;
+  if (!remoteOutfitRoutesWarningShown) {
+    remoteOutfitRoutesWarningShown = true;
+    console.warn('[SOS_API] Outfit routes are unavailable on this backend; falling back to local data.', {
+      code: error instanceof ApiError ? error.code : undefined,
+      status: error instanceof ApiError ? error.status : undefined,
+    });
+  }
+};
+
 export const wardrobeService = {
   async getOutfits(): Promise<Outfit[]> {
-    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
+    if (!canUseRemoteOutfitRoutes()) {
       return [];
     }
 
@@ -54,9 +70,7 @@ export const wardrobeService = {
       return unwrapItems<ApiOutfit>(response).map(toOutfit);
     } catch (error) {
       if (isWardrobeUnavailable(error)) {
-        console.warn('[SOS_API] Wardrobe outfits unavailable, using mock/local data.', {
-          code: error instanceof ApiError ? error.code : undefined,
-        });
+        markRemoteOutfitRoutesUnavailable(error);
         return [];
       }
       throw error;
@@ -64,7 +78,7 @@ export const wardrobeService = {
   },
 
   async getSavedOutfitIds(): Promise<string[]> {
-    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
+    if (!canUseRemoteOutfitRoutes()) {
       return [];
     }
 
@@ -74,9 +88,7 @@ export const wardrobeService = {
       return ids.filter((id) => typeof id === 'string');
     } catch (error) {
       if (isWardrobeUnavailable(error)) {
-        console.warn('[SOS_API] Saved outfits unavailable, using local storage only.', {
-          code: error instanceof ApiError ? error.code : undefined,
-        });
+        markRemoteOutfitRoutesUnavailable(error);
         return [];
       }
       throw error;
@@ -84,18 +96,32 @@ export const wardrobeService = {
   },
 
   async saveOutfit(outfitId: string): Promise<void> {
-    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
+    if (!canUseRemoteOutfitRoutes()) {
       return;
     }
-
-    await apiClient.post(API_ENDPOINTS.wardrobe.savedOutfits, { outfitId });
+    try {
+      await apiClient.post(API_ENDPOINTS.wardrobe.savedOutfits, { outfitId });
+    } catch (error) {
+      if (isWardrobeUnavailable(error)) {
+        markRemoteOutfitRoutesUnavailable(error);
+        return;
+      }
+      throw error;
+    }
   },
 
   async unsaveOutfit(outfitId: string): Promise<void> {
-    if (shouldUseMock() || !wardrobeOutfitRemoteApiEnabled) {
+    if (!canUseRemoteOutfitRoutes()) {
       return;
     }
-
-    await apiClient.delete(`${API_ENDPOINTS.wardrobe.savedOutfits}/${outfitId}`);
+    try {
+      await apiClient.delete(`${API_ENDPOINTS.wardrobe.savedOutfits}/${outfitId}`);
+    } catch (error) {
+      if (isWardrobeUnavailable(error)) {
+        markRemoteOutfitRoutesUnavailable(error);
+        return;
+      }
+      throw error;
+    }
   },
 };

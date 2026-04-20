@@ -9,7 +9,7 @@ alwaysApply: true
 
 1. **`docs/SOS_BACKEND_API_REFERENCE.md`** — **Machine-readable catalog**: every Hoppscotch-exported route with method, path, auth, content-type, request/cURL samples, multipart fields, **integration status** (`integrated` / `partial` / `not_integrated`), and **app-only** routes (`refresh-token`, payments, outfits).
 2. **`docs/completeAPIDocumentation.html`** — Offline Hoppscotch **Mobile API V1** export; refresh when the live collection changes.
-3. **`docs/API_INTEGRATION_GUIDE.md`** — Plain-English **screen → service → flow**, FAQ, flowcharts.
+3. **`docs/API_INTEGRATION_GUIDE.md`** — Plain-English **screen → service → flow** and FAQ.
 
 Online viewer (may require login): `https://api.styleonspot.com/view/f2fb9ef4-e921-404c-949d-4daf9f445155/CURRENT`
 

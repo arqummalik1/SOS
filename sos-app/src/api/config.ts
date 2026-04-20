@@ -20,12 +20,31 @@ const parseTimeoutMs = (value: string | undefined): number => {
   return parsed;
 };
 
+const parseBooleanFlag = (value: string | undefined, fallback: boolean): boolean => {
+  if (value == null) {
+    return fallback;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
+
 /**
- * Production currently returns 404 for `GET /wardrobe/outfits` and `GET /wardrobe/saved-outfits`
- * until those routes ship. Set `EXPO_PUBLIC_WARDROBE_OUTFIT_API_ENABLED=true` when the backend exposes them.
+ * Controls whether outfit aggregate routes (`/wardrobe/outfits`, `/wardrobe/saved-outfits`)
+ * should be called. Keep disabled by default until backend confirms availability.
  */
-export const wardrobeOutfitRemoteApiEnabled =
-  process.env.EXPO_PUBLIC_WARDROBE_OUTFIT_API_ENABLED === 'true';
+export const wardrobeOutfitRemoteApiEnabled = parseBooleanFlag(
+  process.env.EXPO_PUBLIC_WARDROBE_OUTFIT_REMOTE_ENABLED,
+  false
+);
 
 export const API_CONFIG = {
   baseUrl: normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),

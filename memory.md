@@ -133,6 +133,17 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 ## 11. Where we left off (snapshot: 2026-04-18)
 
 - **Onboarding APIs implemented and wired:** profile image, basic details, full body image, **body shape**, **skin tone + style** — all through **`userService`** + **`apiClient`** with loading/toasts/logs where those screens were updated.
+- **Style preferences hardening (2026-04-20):** `StylePreferencesScreen` now loads **`GET /onboarding/options`** via `userService.getOnboardingOptions`, supports **multi-select** style keys, and uses API option keys directly for `PATCH /onboarding/skin-tone-style` (`style_preferences[]`).
+- **Save failure fix (2026-04-20):** style save and onboarding completion are now handled as separate steps in UI logic, so `/onboarding/complete` failures no longer surface as “failed to save preferences”.
+- **Selection UI refresh (2026-04-20):** skin tone/style selected states now use elevation/shadow emphasis (no black selection borders), and custom skin tone uses a color wheel picker with hex fallback input.
+- **Backend-driven onboarding routing (2026-04-20):** OTP success now resolves next onboarding screen from **`GET /onboarding/status`** using `resolveNextOnboardingRoute` (`ProfileSetupHub`/`ProfileSetup`/`FullBodyPhoto`/`BodyMeasurements`/`StylePreferences`), instead of a fixed post-OTP jump.
+- **Onboarding options expansion (2026-04-20):** `userService.getOnboardingOptions` now parses **`body_shapes`** (including `icon_url`) and `BodyMeasurementsScreen` consumes API body-shape options while preserving local image fallback; onboarding camera/gallery permission errors now use `notify` toast flow (no silent/native-only alerts).
+- **Second-pass state hardening (2026-04-20):** auth state now stores `onboardingEntryRoute`; session restore and OTP verification map backend `GET /onboarding/status` to an exact auth-stack entry route. `AuthNavigator` uses this backend-derived initial route, and `RootNavigator` now auto-resets between `Auth`/`Main` when auth/onboarding flags change so resumed sessions land in the correct flow without static first-screen assumptions.
+- **Onboarding completion truth-gate (2026-04-20):** `AuthContext.completeOnboarding` no longer applies optimistic completion. It now requires server confirmation (`POST /onboarding/complete` + `GET /onboarding/status` returning complete) before setting `isOnboarded=true`; failed confirmation keeps onboarding false and throws for UI retry handling.
+- **Screen-level API success gating (2026-04-20):** onboarding screens now explicitly block navigation unless API responses report success (`ProfileSetupHub`, `ProfilePicture`, `ProfileSetup`, `FullBodyPhotoPreview`, `BodyMeasurements`, `StylePreferences`).
+- **Profile GET loop fix (2026-04-20):** `EditProfileScreen` removed `user` from focus refresh dependencies; profile fetch now runs once on focus while local fields sync via `useEffect`, preventing nonstop `GET /profile`.
+- **Onboarding QA runbook (2026-04-20):** added `docs/ONBOARDING_API_VALIDATION_CHECKLIST.md` for real-device API flow validation (POST/PATCH/GET + render + navigation acceptance checks).
+- **Dashboard route noise fix (2026-04-20):** disabled remote wardrobe aggregate outfit routes (`/wardrobe/outfits`, `/wardrobe/saved-outfits`) in `api/config.ts` because they are not present in `docs/completeAPIDocumentation.html`; `wardrobeService` now also auto-disables those routes after `NOT_FOUND/FORBIDDEN` fallback.
 - **Image pipeline:** `prepareProfileImageForUpload.ts`, `prepareFullBodyImageForUpload.ts` (9:16).
 - **Rules:** `sos-production-engineering.mdc` + `ui-visual-style.mdc`; flowcharts only for **flow** work; **`memory.md`** is the handoff doc.
 - **Outstanding / not guaranteed:** payment + wardrobe **endpoints** exist in code but may not match live backend; **`profileData` typing** is still loose (`any` in navigator); optional hardening: tighten `AuthStackParamList`, success navigation after onboarding to main app (verify `RootNavigator` / post-login route).
@@ -146,6 +157,7 @@ All paths are **relative to** `EXPO_PUBLIC_API_BASE_URL` (must end with `/api/v1
 | Endpoints | `sos-app/src/api/endpoints.ts` |
 | Backend API catalog (bodies, headers, tokens, status) | **`docs/SOS_BACKEND_API_REFERENCE.md`** |
 | API integration narrative | **`docs/API_INTEGRATION_GUIDE.md`** |
+| Onboarding API QA checklist | **`docs/ONBOARDING_API_VALIDATION_CHECKLIST.md`** |
 | Cursor API rules | **`.cursor/rules/sos-backend-api-reference.mdc`**, **`.cursor/rules/styleonspot-api-spec.mdc`** |
 | HTTP client | `sos-app/src/api/client.ts`, `errors.ts`, `config.ts` |
 | User + onboarding HTTP | `sos-app/src/services/userService.ts` |
@@ -176,4 +188,4 @@ npm run start            # or npm run start:dev with dev client installed
 
 ---
 
-**Last updated:** 2026-04-18 — **`docs/NAVIGATION_FLOWCHART.md`**: full route/screen map (Root, Auth, tabs, stacks). Wardrobe **PUT** parity + **`normalizeWardrobeItemCategory`**; **`notify`** web path; **`errors.extractServerMessage`** nested Laravel shapes. See **`docs/SOS_BACKEND_API_REFERENCE.md`**, wardrobe, profile, onboarding, auth.
+**Last updated:** 2026-04-20 — onboarding completion now requires backend-confirmed status (no optimistic completion), onboarding screens gate navigation on API success flags, profile refresh loop in Edit Profile is fixed, and `docs/ONBOARDING_API_VALIDATION_CHECKLIST.md` documents real-device POST/PATCH/GET validation flow.

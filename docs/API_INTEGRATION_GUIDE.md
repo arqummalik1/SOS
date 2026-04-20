@@ -145,11 +145,10 @@ Below, **“Why”** is always from the user’s point of view: what problem the
 | **ProfileSetupScreen** | Enters name, height, weight, DOB, etc. | `userService.saveOnboardingBasicDetails` | `PATCH /onboarding/basic-details` | Server needs structured profile fields for recommendations. |
 | **FullBodyPhotoPreviewScreen** (after camera/gallery) | Confirms full-body photo | `userService.uploadFullBodyImage` | `POST /onboarding/full-body-image` (multipart **`full_body_image`**) | Try-on and fit features need a body reference; image is resized client-side to avoid upload errors. |
 | **BodyMeasurementsScreen** | Picks body shape (and optional custom label) | `userService.saveOnboardingBodyShape` | `PATCH /onboarding/body-shape` | Silhouette drives how clothes are suggested. |
-| **StylePreferencesScreen** | Picks skin tone + style tags | `userService.saveOnboardingSkinToneStyle` | `PATCH /onboarding/skin-tone-style` | Palette and style tags tune recommendations and try-on. |
+| **StylePreferencesScreen** | Picks skin tone + style tags (server-driven options) | `userService.getOnboardingOptions`, `userService.saveOnboardingSkinToneStyle` | `GET /onboarding/options`, `PATCH /onboarding/skin-tone-style` | Palette and style tags tune recommendations and try-on. |
+| **BodyMeasurementsScreen** | Picks body shape (server-driven options + custom) | `userService.getOnboardingOptions`, `userService.saveOnboardingBodyShape` | `GET /onboarding/options`, `PATCH /onboarding/body-shape` | Uses backend shape keys for consistent silhouette mapping. |
 | **StylePreferencesScreen** (finish / skip paths) | Finishes onboarding | **`AuthContext.completeOnboarding`** → `userService.markOnboardingComplete` | `POST /onboarding/complete` | Marks the account as ready for the main app. |
 | **StylePreferencesScreen** | May merge local fields | `userService.updateProfile` / **`UserContext.updateProfile`** | `PUT /profile` | Keeps **`GET /profile`** in sync when you change fields that also live on the user record. |
-
-**Doc-only today:** **`GET /onboarding/options`** (dropdown source data) is **not** called yet. When you need driven labels from the server, add one service method and call it from the hub or first step screen.
 
 ### 5.3 Profile and settings
 

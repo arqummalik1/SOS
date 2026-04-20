@@ -413,7 +413,26 @@ export const wardrobeItemService = {
       } as unknown as Blob
     );
 
-    console.log(`${LOG} POST items (multipart)`);
+    console.log(`${LOG} POST items (multipart)`, {
+      endpoint: API_ENDPOINTS.wardrobe.items,
+      body: {
+        name: input.name.trim(),
+        category: normalizeWardrobeItemCategory(input.category),
+        brand: input.brand.trim(),
+        purchase_price: String(input.purchase_price).trim(),
+        folder_id: String(input.folder_id).trim(),
+        seasons: input.seasons.map((s) => s.trim().toLowerCase()).filter(Boolean),
+        occasions: input.occasions.map((o) => o.trim().toLowerCase()).filter(Boolean),
+        description: input.description?.trim() || null,
+        color: input.color?.trim() || null,
+        material: input.material?.trim().toLowerCase() || null,
+        size: input.size?.trim() || null,
+        image: {
+          filename: prepared.filename,
+          mimeType: prepared.mimeType,
+        },
+      },
+    });
 
     try {
       const response = await apiClient.post<unknown>(API_ENDPOINTS.wardrobe.items, form);

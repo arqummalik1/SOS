@@ -17,6 +17,8 @@ import { OTPInput } from '../../components/inputs/OTPInput';
 import { useOTPViewModel } from '../../viewmodels/useOTPViewModel';
 import { typography } from '../../theme/typography';
 import { notify } from '../../utils/notify';
+import { authService } from '../../services/authService';
+import { resolveNextOnboardingRoute } from '../../navigation/onboardingFlow';
 
 const { height } = Dimensions.get('window');
 
@@ -58,8 +60,29 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({ navigation }) => {
     }
 
     const message = await handleVerify();
-    if (message) {
-      notify({ type: 'success', message });
+    if (!message) {
+      return;
+    }
+    notify({ type: 'success', message });
+
+    try {
+      const status = await authService.getOnboardingStatus();
+      const nextRoute = resolveNextOnboardingRoute(status);
+      if (nextRoute === 'Main') {
+        // RootNavigator reacts to auth state and moves to Main when onboarding is complete.
+        return;
+      }
+      if (nextRoute === 'StylePreferences' || nextRoute === 'BodyMeasurements') {
+        navigation.navigate(nextRoute, { profileData: {} });
+        return;
+      }
+      if (nextRoute === 'ProfileSetup' || nextRoute === 'FullBodyPhoto') {
+        navigation.navigate(nextRoute, { profileData: {} });
+        return;
+      }
+      navigation.navigate(nextRoute);
+    } catch (error) {
+      console.warn('[SOS_AUTH] Could not resolve onboarding route from API status, using fallback', error);
       navigation.navigate('ProfileSetupHub');
     }
   };

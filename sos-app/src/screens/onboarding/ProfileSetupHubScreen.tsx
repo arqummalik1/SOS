@@ -63,6 +63,9 @@ export const ProfileSetupHubScreen: React.FC<ProfileSetupHubScreenProps> = ({ na
     try {
       setIsUploading(true);
       const upload = await userService.uploadProfileImage(result.assets[0].uri);
+      if (!upload.success) {
+        throw new Error(upload.message || 'Failed to upload profile image.');
+      }
       notify({ type: 'success', message: upload.message });
       navigation.navigate('ProfileSetup', {
         profileImage: upload.profileImageUrl ?? result.assets[0].uri,
@@ -76,7 +79,8 @@ export const ProfileSetupHubScreen: React.FC<ProfileSetupHubScreenProps> = ({ na
   };
 
   const handleSkip = () => {
-    navigation.navigate('StylePreferences', { profileData: {} });
+    notify({ type: 'info', message: 'You can add a profile photo later.' });
+    navigation.navigate('ProfileSetup');
   };
 
   return (

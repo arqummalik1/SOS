@@ -1,13 +1,25 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, tokenManager } from '../api/tokenManager';
-import { authService } from '../services/authService';
+import { authService, OnboardingStatus } from '../services/authService';
 import { userService } from '../services/userService';
+import { resolveNextOnboardingRoute } from '../navigation/onboardingFlow';
+
+type OnboardingEntryRoute =
+  | 'First'
+  | 'SignIn'
+  | 'OTP'
+  | 'ProfileSetupHub'
+  | 'ProfileSetup'
+  | 'FullBodyPhoto'
+  | 'BodyMeasurements'
+  | 'StylePreferences';
 
 type AuthState = {
   isAuthenticated: boolean;
   isOnboarded: boolean;
   phone: string | null;
+  onboardingEntryRoute: OnboardingEntryRoute;
 };
 
 type AuthContextType = {
@@ -21,13 +33,26 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_SESSION_KEY = 'authSession';
+const ONBOARDING_LOG = '[SOS_ONBOARDING_FLOW]';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     isOnboarded: false,
     phone: null,
+    onboardingEntryRoute: 'First',
   });
+
+  const resolveEntryRouteFromStatus = (
+    status: OnboardingStatus,
+    fallback: OnboardingEntryRoute = 'ProfileSetupHub'
+  ): OnboardingEntryRoute => {
+    const nextRoute = resolveNextOnboardingRoute(status);
+    if (nextRoute === 'Main') {
+      return fallback;
+    }
+    return nextRoute;
+  };
 
   useEffect(() => {
     loadAuthState();
@@ -40,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const accessToken = await tokenManager.getAccessToken();
 
       let isOnboarded = localOnboarded === 'true';
+      let onboardingEntryRoute: OnboardingEntryRoute = 'First';
       
       // Only consider user authenticated if they have a valid access token
       const isAuthenticated = !!accessToken && !!phone;
@@ -48,14 +74,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const status = await authService.getOnboardingStatus();
           isOnboarded = status.isOnboardingComplete;
+          if (!isOnboarded) {
+            onboardingEntryRoute = resolveEntryRouteFromStatus(status);
+          }
           await AsyncStorage.setItem('isOnboarded', isOnboarded ? 'true' : 'false');
           console.log('[SOS_AUTH] Session restored - user is authenticated and onboarding status:', isOnboarded);
         } catch (error) {
           console.warn('[SOS_AUTH] Failed to refresh onboarding status, using local value:', error);
           console.log('[SOS_AUTH] Session restored from local storage - onboarding:', isOnboarded);
+          onboardingEntryRoute = isOnboarded ? 'First' : 'ProfileSetupHub';
         }
       } else if (phone) {
         console.log('[SOS_AUTH] Phone exists but no valid token - user needs to login again');
+        onboardingEntryRoute = 'SignIn';
       } else {
         console.log('[SOS_AUTH] No session found - showing login screen');
       }
@@ -64,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated,
         isOnboarded,
         phone,
+        onboardingEntryRoute,
       });
     } catch (error) {
       console.error('[SOS_AUTH] Error loading auth state:', error);
@@ -71,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: false,
         isOnboarded: false,
         phone: null,
+        onboardingEntryRoute: 'First',
       });
     }
   };
@@ -78,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (phone: string): Promise<string> => {
     const result = await authService.requestOtp({ phone });
     await AsyncStorage.setItem('userPhone', phone);
-    setState((prev) => ({ ...prev, phone }));
+    setState((prev) => ({ ...prev, phone, onboardingEntryRoute: 'OTP' }));
     return result.message ?? 'OTP sent successfully';
   };
 
@@ -117,11 +150,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (session.success) {
       let isOnboarded = Boolean(session.isOnboardingComplete);
+      let onboardingEntryRoute: OnboardingEntryRoute = 'ProfileSetupHub';
       try {
         const status = await authService.getOnboardingStatus();
         isOnboarded = status.isOnboardingComplete;
+        if (!isOnboarded) {
+          onboardingEntryRoute = resolveEntryRouteFromStatus(status);
+        }
       } catch (error) {
         console.warn('Failed to refresh onboarding status after login, using session value:', error);
+        onboardingEntryRoute = isOnboarded ? 'First' : 'ProfileSetupHub';
       }
       await AsyncStorage.setItem('isOnboarded', isOnboarded ? 'true' : 'false');
 
@@ -159,7 +197,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       );
 
-      setState((prev) => ({ ...prev, isAuthenticated: true, isOnboarded }));
+      setState((prev) => ({
+        ...prev,
+        isAuthenticated: true,
+        isOnboarded,
+        onboardingEntryRoute,
+      }));
       return {
         success: true,
         message: session.message ?? 'Logged in successfully',
@@ -181,18 +224,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const completeOnboarding = async () => {
+    console.log(`${ONBOARDING_LOG} completeOnboarding started`);
     await userService.markOnboardingComplete();
+    console.log(`${ONBOARDING_LOG} onboarding/complete API succeeded`);
+
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const attempts = 3;
     try {
-      const status = await authService.getOnboardingStatus();
-      await AsyncStorage.setItem('isOnboarded', status.isOnboardingComplete ? 'true' : 'false');
-      setState((prev) => ({ ...prev, isOnboarded: status.isOnboardingComplete }));
+      let finalStatus: OnboardingStatus | null = null;
+      for (let i = 0; i < attempts; i += 1) {
+        const status = await authService.getOnboardingStatus();
+        console.log(`${ONBOARDING_LOG} onboarding/status attempt`, {
+          attempt: i + 1,
+          isOnboardingComplete: status.isOnboardingComplete,
+          steps: status.steps,
+        });
+        finalStatus = status;
+        if (status.isOnboardingComplete) {
+          break;
+        }
+        if (i < attempts - 1) {
+          await wait(450);
+        }
+      }
+
+      const isComplete = finalStatus?.isOnboardingComplete ?? false;
+      await AsyncStorage.setItem('isOnboarded', isComplete ? 'true' : 'false');
+      setState((prev) => ({
+        ...prev,
+        isOnboarded: isComplete,
+        onboardingEntryRoute: isComplete
+          ? 'First'
+          : resolveEntryRouteFromStatus(finalStatus ?? { isOnboardingComplete: false, steps: {} }),
+      }));
+      console.log(`${ONBOARDING_LOG} completeOnboarding state updated from status`, {
+        isOnboarded: isComplete,
+      });
+      if (!isComplete) {
+        throw new Error('Onboarding completion is not confirmed yet. Please try again.');
+      }
       return;
     } catch (error) {
-      console.warn('Failed to refresh onboarding status after completion, using optimistic fallback:', error);
+      console.warn(`${ONBOARDING_LOG} status refresh failed`, error);
+      await AsyncStorage.setItem('isOnboarded', 'false');
+      setState((prev) => ({ ...prev, isOnboarded: false }));
+      throw error instanceof Error
+        ? error
+        : new Error('Could not confirm onboarding completion. Please try again.');
     }
-
-    await AsyncStorage.setItem('isOnboarded', 'true');
-    setState((prev) => ({ ...prev, isOnboarded: true }));
   };
 
   const logout = async () => {
@@ -214,6 +293,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isAuthenticated: false,
       isOnboarded: false,
       phone: null,
+      onboardingEntryRoute: 'First',
     });
   };
 

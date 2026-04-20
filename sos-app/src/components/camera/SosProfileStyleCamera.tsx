@@ -99,8 +99,9 @@ export const SosProfileStyleCamera: React.FC<SosProfileStyleCameraProps> = ({
     }
 
     const options = {
-      quality: Platform.OS === 'android' ? 0.65 : 0.75,
-      skipProcessing: Platform.OS === 'android',
+      quality: Platform.OS === 'android' ? 0.85 : 0.75,
+      // Keep Android captures fully processed so the URI remains stable after camera unmount/navigation.
+      skipProcessing: false,
     };
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
