@@ -170,9 +170,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
                 resizeMode="contain"
               />
               <Image source={require('../../../assets/dashboard/purse.png')} style={styles.heroBottomAsset} resizeMode="contain" />
-              <View style={styles.heroRotateHandle} {...rotatePanResponder.panHandlers}>
-                <MaterialIcons name="3d-rotation" size={16} color="#FFFFFF" />
-              </View>
             </View>
 
             <View style={[styles.heroSideRail, { width: sideRailWidth }]}>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from '../api/tokenManager';
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, tokenManager } from '../api/tokenManager';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 
@@ -37,25 +37,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const phone = await AsyncStorage.getItem('userPhone');
       const localOnboarded = await AsyncStorage.getItem('isOnboarded');
+      const accessToken = await tokenManager.getAccessToken();
 
       let isOnboarded = localOnboarded === 'true';
-      if (phone) {
+      
+      // Only consider user authenticated if they have a valid access token
+      const isAuthenticated = !!accessToken && !!phone;
+
+      if (isAuthenticated) {
         try {
           const status = await authService.getOnboardingStatus();
           isOnboarded = status.isOnboardingComplete;
           await AsyncStorage.setItem('isOnboarded', isOnboarded ? 'true' : 'false');
+          console.log('[SOS_AUTH] Session restored - user is authenticated and onboarding status:', isOnboarded);
         } catch (error) {
-          console.warn('Failed to refresh onboarding status, using local value:', error);
+          console.warn('[SOS_AUTH] Failed to refresh onboarding status, using local value:', error);
+          console.log('[SOS_AUTH] Session restored from local storage - onboarding:', isOnboarded);
         }
+      } else if (phone) {
+        console.log('[SOS_AUTH] Phone exists but no valid token - user needs to login again');
+      } else {
+        console.log('[SOS_AUTH] No session found - showing login screen');
       }
 
       setState({
-        isAuthenticated: !!phone,
+        isAuthenticated,
         isOnboarded,
         phone,
       });
     } catch (error) {
-      console.error('Error loading auth state:', error);
+      console.error('[SOS_AUTH] Error loading auth state:', error);
+      setState({
+        isAuthenticated: false,
+        isOnboarded: false,
+        phone: null,
+      });
     }
   };
 

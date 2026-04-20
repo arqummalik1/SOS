@@ -227,8 +227,13 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
           <TouchableOpacity
             style={styles.createButton}
             activeOpacity={0.85}
-            onPress={() => setCreateOpen(true)}
-            disabled={!authState.isAuthenticated || !authState.isOnboarded}
+            onPress={() => {
+              if (!authState.isAuthenticated || !authState.isOnboarded) {
+                notify({ type: 'error', message: 'Please complete onboarding first' });
+                return;
+              }
+              setCreateOpen(true);
+            }}
           >
             <Text style={styles.createButtonText}>Create Wardrobe</Text>
             <Text style={styles.createButtonPlus}>+</Text>

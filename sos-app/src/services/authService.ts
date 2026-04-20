@@ -132,23 +132,42 @@ export const authService = {
     isNewUser?: boolean;
     phone?: string;
   }> {
+    console.log('[SOS_AUTH] Requesting OTP for phone:', payload.phone);
+    
     if (shouldUseMock()) {
+      console.warn('[SOS_AUTH] Using mock mode - OTP not actually sent');
       return { success: true, message: 'OTP sent successfully' };
     }
 
-    const response = await apiClient.post<AuthResponseEnvelope<RequestOtpResponseData>>(
-      API_ENDPOINTS.auth.requestOtp,
-      payload,
-      { skipAuth: true }
-    );
+    try {
+      const response = await apiClient.post<AuthResponseEnvelope<RequestOtpResponseData>>(
+        API_ENDPOINTS.auth.requestOtp,
+        payload,
+        { skipAuth: true }
+      );
 
-    return {
-      success: response.success ?? true,
-      message: response.message,
-      expiresIn: response.data?.expires_in,
-      isNewUser: response.data?.is_new_user,
-      phone: response.data?.phone,
-    };
+      console.log('[SOS_AUTH] OTP request successful:', {
+        success: response.success,
+        message: response.message,
+        expiresIn: response.data?.expires_in,
+        isNewUser: response.data?.is_new_user,
+      });
+
+      return {
+        success: response.success ?? true,
+        message: response.message ?? 'OTP sent successfully',
+        expiresIn: response.data?.expires_in,
+        isNewUser: response.data?.is_new_user,
+        phone: response.data?.phone,
+      };
+    } catch (error) {
+      console.error('[SOS_AUTH] OTP request failed:', error);
+      const apiError = error as ApiError;
+      throw new Error(
+        apiError.message || 
+        'Failed to send OTP. Please check your phone number and try again.'
+      );
+    }
   },
 
   async verifyOtp(payload: VerifyOtpPayload): Promise<AuthSession> {
