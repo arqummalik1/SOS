@@ -53,6 +53,9 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
     const trimmedName = name.trim();
     if (!trimmedName) {
       notify({ type: 'error', message: 'Please enter a folder name.' });
@@ -228,6 +231,5 @@ const styles = StyleSheet.create({
   btnPrimaryText: {
     ...typography.callout,
     color: '#FFFFFF',
-    fontWeight: '600',
   },
 });

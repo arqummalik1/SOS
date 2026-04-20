@@ -16,6 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { useAuth } from '../../store/AuthContext';
 import { fontNames } from '../../theme/fonts';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 const { width } = Dimensions.get('window');
 
@@ -50,16 +52,21 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
 
   const handleContinue = async () => {
     try {
+      const styleName = stylesList.find((s) => s.id === selectedStyle)?.name || 'Casual';
+      await userService.saveOnboardingSkinToneStyle({
+        skinTone: selectedTone,
+        stylePreferences: [styleName],
+      });
       await completeOnboarding();
-      
-      // Navigate to Main app after successful onboarding
+
       notify({ type: 'success', message: 'Welcome to Style On Spot!' });
-      rootNavigation.reset({
+      navigation.reset({
         index: 0,
         routes: [{ name: 'Main' }],
       });
     } catch (error) {
       console.error('Error completing onboarding:', error);
+      notify({ type: 'error', message: 'Failed to save preferences. Please try again.' });
     }
   };
 

@@ -1,4 +1,5 @@
 const DEFAULT_API_BASE_URL = 'https://app.styleonspot.com/api/v1';
+const DEFAULT_API_TIMEOUT_MS = 15000;
 
 const normalizeBaseUrl = (value: string | undefined): string => {
   if (!value || !value.trim()) {
@@ -6,6 +7,17 @@ const normalizeBaseUrl = (value: string | undefined): string => {
   }
 
   return value.trim().replace(/\/+$/, '');
+};
+
+const parseTimeoutMs = (value: string | undefined): number => {
+  if (value === undefined) {
+    return DEFAULT_API_TIMEOUT_MS;
+  }
+  const parsed = Number(value);
+  if (!isFinite(parsed) || parsed <= 0) {
+    return DEFAULT_API_TIMEOUT_MS;
+  }
+  return parsed;
 };
 
 /**
@@ -17,7 +29,7 @@ export const wardrobeOutfitRemoteApiEnabled =
 
 export const API_CONFIG = {
   baseUrl: normalizeBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
-  timeoutMs: Number(process.env.EXPO_PUBLIC_API_TIMEOUT_MS ?? 15000),
+  timeoutMs: parseTimeoutMs(process.env.EXPO_PUBLIC_API_TIMEOUT_MS),
   isUsingFallbackBaseUrl: !process.env.EXPO_PUBLIC_API_BASE_URL?.trim(),
 } as const;
 

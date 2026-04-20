@@ -17,6 +17,8 @@ import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +33,28 @@ interface FullBodyPhotoPreviewScreenProps {
  */
 export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProps> = ({ navigation, route }) => {
   const fullBodyImage = route.params?.fullBodyImage;
+  const profileData = route.params?.profileData || {};
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleLookGood = async () => {
+    if (!fullBodyImage) {
+      notify({ type: 'error', message: 'No full-body image to upload' });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      await userService.uploadFullBodyImage(fullBodyImage);
+      navigation.navigate('BodyMeasurements', { profileData });
+    } catch (error) {
+      console.error('[SOS_FULL_BODY_PREVIEW] Upload error:', error);
+      notify({ type: 'error', message: 'Failed to upload full-body image. Please try again.' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <SafeContainer style={styles.container}>
@@ -103,12 +125,17 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
 
         {/* Action Button */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.lookGoodButton}
-            onPress={() => navigation.navigate('BodyMeasurements', { profileData: {} })}
+            onPress={handleLookGood}
             activeOpacity={0.9}
+            disabled={isUploading}
           >
-            <Text style={styles.buttonText}>Look’s Good</Text>
+            {isUploading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Look's Good</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

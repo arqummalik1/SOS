@@ -113,11 +113,14 @@ const extractServerMessage = (payload: unknown, depth = 0): string | undefined =
   }
 
   const candidate = source.message ?? source.error ?? source.detail;
+  let isGeneric = false;
+
   if (typeof candidate === 'string' && candidate.trim().length > 0) {
     const normalized = candidate.trim();
     if (!GENERIC_SERVER_MESSAGES.has(normalized.toLowerCase())) {
       return normalized;
     }
+    isGeneric = true;
   }
 
   const details = source.details;
@@ -126,6 +129,10 @@ const extractServerMessage = (payload: unknown, depth = 0): string | undefined =
     if (nested) {
       return nested;
     }
+  }
+
+  if (isGeneric) {
+    return undefined;
   }
 
   return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : undefined;
@@ -245,7 +252,7 @@ export const toHttpStatusError = (status: number, payload: unknown): ApiError =>
     return new ApiError({
       code: 'SERVER_ERROR',
       status,
-      message: friendly ?? serverMessage ?? 'Server error. Please try again later.',
+      message: friendly ?? 'Server error. Please try again later.',
       details,
       isRetryable: true,
     });

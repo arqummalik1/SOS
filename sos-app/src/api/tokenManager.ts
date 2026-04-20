@@ -5,25 +5,29 @@ export const REFRESH_TOKEN_KEY = 'authRefreshToken';
 
 let inMemoryAccessToken: string | null = null;
 let inMemoryRefreshToken: string | null = null;
+let accessTokenLoaded = false;
+let refreshTokenLoaded = false;
 
 export const tokenManager = {
   async getAccessToken(): Promise<string | null> {
-    if (inMemoryAccessToken !== null) {
+    if (accessTokenLoaded) {
       return inMemoryAccessToken;
     }
 
     const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
     inMemoryAccessToken = token;
+    accessTokenLoaded = true;
     return token;
   },
 
   async getRefreshToken(): Promise<string | null> {
-    if (inMemoryRefreshToken !== null) {
+    if (refreshTokenLoaded) {
       return inMemoryRefreshToken;
     }
 
     const token = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
     inMemoryRefreshToken = token;
+    refreshTokenLoaded = true;
     return token;
   },
 
@@ -32,6 +36,7 @@ export const tokenManager = {
 
     if (accessToken !== undefined) {
       inMemoryAccessToken = accessToken;
+      accessTokenLoaded = true;
       if (accessToken) {
         await AsyncStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
       } else {
@@ -41,6 +46,7 @@ export const tokenManager = {
 
     if (refreshToken !== undefined) {
       inMemoryRefreshToken = refreshToken;
+      refreshTokenLoaded = true;
       if (refreshToken) {
         await AsyncStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
       } else {
@@ -52,6 +58,8 @@ export const tokenManager = {
   async clearTokens(): Promise<void> {
     inMemoryAccessToken = null;
     inMemoryRefreshToken = null;
+    accessTokenLoaded = false;
+    refreshTokenLoaded = false;
     await AsyncStorage.multiRemove([ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY]);
   },
 };
