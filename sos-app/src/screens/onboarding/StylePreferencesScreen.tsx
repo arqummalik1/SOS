@@ -15,10 +15,11 @@ import {
   Animated,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 import { useUser } from '../../store/UserContext';
 import { useAuth } from '../../store/AuthContext';
 import { ApiError } from '../../api/errors';
@@ -56,6 +57,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
   const { width } = useWindowDimensions();
   const { updateProfile } = useUser();
   const { completeOnboarding } = useAuth();
+  const rootNavigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const profileData = route.params?.profileData;
   const [selectedTone, setSelectedTone] = useState<string>(skinTones[0]);
   const [selectedStyleId, setSelectedStyleId] = useState<string>(styleCards[0].id);
@@ -113,6 +115,13 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         colorPreferences: [apiResult.skinTone ?? selectedTone],
       });
       await completeOnboarding();
+      
+      // Navigate to Main app after successful onboarding
+      notify({ type: 'success', message: 'Welcome to Style On Spot!' });
+      rootNavigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (error) {
       if (error instanceof ApiError) {
         console.error('[SOS_ONBOARDING] StylePreferences save failed', {
@@ -158,6 +167,13 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         profileImage: profileData?.profileImage ?? null,
       });
       await completeOnboarding();
+      
+      // Navigate to Main app after successful onboarding (skip flow)
+      notify({ type: 'success', message: 'Welcome to Style On Spot!' });
+      rootNavigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (error) {
       if (error instanceof ApiError) {
         console.error('[SOS_ONBOARDING] StylePreferences skip failed', {

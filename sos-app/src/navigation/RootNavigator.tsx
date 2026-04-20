@@ -1,5 +1,4 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -25,21 +24,24 @@ export const RootNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        initialRouteName={state.isOnboarded ? 'Main' : 'Auth'}
         screenOptions={{
           headerShown: false,
-          // Web: detaching inactive screens sets aria-hidden while focus can remain on the modal shutter.
-          detachInactiveScreens: Platform.OS === 'web' ? false : undefined,
         }}
       >
-        {!state.isOnboarded ? (
-          <Stack.Screen name="Auth" component={AuthNavigator} />
-        ) : (
-          <>
-            <Stack.Screen name="Main" component={MainTabNavigator} />
-            <Stack.Screen name="AddItemCamera" component={AddItemCameraScreen} />
-            <Stack.Screen name="AddItemGallery" component={AddItemGalleryScreen} />
-          </>
-        )}
+        {/* Always render both Auth and Main so navigation.reset works after onboarding */}
+        <Stack.Screen 
+          name="Auth" 
+          component={AuthNavigator}
+          options={{ animation: 'none' }}
+        />
+        <Stack.Screen 
+          name="Main" 
+          component={MainTabNavigator}
+          options={{ animation: 'none' }}
+        />
+        <Stack.Screen name="AddItemCamera" component={AddItemCameraScreen} />
+        <Stack.Screen name="AddItemGallery" component={AddItemGalleryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

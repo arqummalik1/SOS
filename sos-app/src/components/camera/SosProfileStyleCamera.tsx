@@ -258,17 +258,16 @@ export const SosProfileStyleCamera: React.FC<SosProfileStyleCameraProps> = ({
 
       <View style={styles.previewContainer}>
         <View style={styles.cameraContainer}>
-          {isFocused ? (
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              facing={facing}
-              onMountError={({ message }) => {
-                console.error('[SosProfileStyleCamera] mount error', message);
-                notify({ type: 'error', message: message || 'Camera could not start.' });
-              }}
-            />
-          ) : null}
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing={facing}
+            active={isFocused}
+            onMountError={({ message }) => {
+              console.error('[SosProfileStyleCamera] mount error', message);
+              notify({ type: 'error', message: message || 'Camera could not start.' });
+            }}
+          />
           {renderGridOverlay()}
         </View>
       </View>

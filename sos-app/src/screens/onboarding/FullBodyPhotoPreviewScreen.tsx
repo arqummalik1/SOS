@@ -10,6 +10,7 @@ import {
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -45,6 +46,10 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
   const fullBodyImage = route.params?.fullBodyImage;
   const profileImage = route.params?.profileImage;
   const profileData = route.params?.profileData;
+
+  // Image loading states
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
   const handleLooksGood = useCallback(async () => {
     if (isUploadingRef.current) {
@@ -125,14 +130,42 @@ export const FullBodyPhotoPreviewScreen: React.FC<FullBodyPhotoPreviewScreenProp
         {/* ── Photo Preview (tall rectangle with edit badge) ── */}
         <View style={styles.photoSection}>
           <View style={[styles.photoWrapper, { width: IMAGE_WIDTH, height: IMAGE_HEIGHT }]}>
+            {/* Loading placeholder */}
+            {imageLoading && !imageError && (
+              <View style={[styles.previewImage, styles.imageLoadingPlaceholder]}>
+                <ActivityIndicator color="#666666" size="large" />
+                <Text style={styles.loadingText}>Loading image...</Text>
+              </View>
+            )}
+            {/* Error state */}
+            {imageError && !fullBodyImage && (
+              <View style={[styles.previewImage, styles.imageErrorPlaceholder]}>
+                <Ionicons name="image-outline" size={48} color="#999999" />
+                <Text style={styles.errorText}>No image selected</Text>
+              </View>
+            )}
+            {/* Actual image with error handling */}
             <Image
               source={
-                fullBodyImage
+                fullBodyImage && !imageError
                   ? { uri: fullBodyImage }
                   : require('../../../assets/images/mosaic/fashion1.jpg')
               }
-              style={styles.previewImage}
+              style={[
+                styles.previewImage,
+                (imageLoading || (imageError && !fullBodyImage)) && styles.imageHidden,
+              ]}
               resizeMode="cover"
+              onLoadStart={() => {
+                setImageLoading(true);
+                setImageError(false);
+              }}
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => {
+                setImageLoading(false);
+                setImageError(true);
+                console.error('[SOS_FULL_BODY_IMAGE] Failed to load image:', fullBodyImage);
+              }}
             />
             {/* Edit badge — bottom-right */}
             <TouchableOpacity
@@ -238,6 +271,41 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 24,
     backgroundColor: '#F2F2F7',
+  },
+  imageHidden: {
+    opacity: 0,
+  },
+  imageLoadingPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontFamily: fontNames.regular,
+    fontSize: 14,
+    color: '#666666',
+  },
+  imageErrorPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: {
+    fontFamily: fontNames.regular,
+    fontSize: 14,
+    color: '#999999',
   },
   editBadge: {
     position: 'absolute',

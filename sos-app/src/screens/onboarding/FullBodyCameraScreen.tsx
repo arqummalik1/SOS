@@ -64,8 +64,10 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: Platform.OS === 'android' ? 0.65 : 0.75,
-        skipProcessing: Platform.OS === 'android',
+        quality: Platform.OS === 'android' ? 0.85 : 0.75,
+        // Android + skipProcessing:true: URI can be tied to the camera session / cache; navigating
+        // away unmounts CameraView before FullBodyPhotoPreview finishes loading → blank (white) image.
+        skipProcessing: false,
       });
 
       if (photo?.uri) {
@@ -188,13 +190,12 @@ export const FullBodyCameraScreen: React.FC<FullBodyCameraScreenProps> = ({ navi
       {/* Camera Preview */}
       <View style={styles.previewContainer}>
         <View style={styles.cameraContainer}>
-          {isFocused && (
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              facing={facing}
-            />
-          )}
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing={facing}
+            active={isFocused}
+          />
           {renderGridOverlay()}
         </View>
       </View>
