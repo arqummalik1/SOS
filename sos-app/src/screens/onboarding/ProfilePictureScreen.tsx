@@ -1,338 +1,71 @@
-import React, { useState, useRef } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  Animated,
-  Platform,
-  Alert,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useIsFocused } from '@react-navigation/native';
-import { CameraView, useCameraPermissions, CameraType } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import { fontNames } from '../../theme/fonts';
-import { typography } from '../../theme/typography';
+import { SosProfileStyleCamera } from '../../components/camera/SosProfileStyleCamera';
+import { ApiError } from '../../api/errors';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 interface ProfilePictureScreenProps {
   navigation: NativeStackNavigationProp<any>;
 }
 
 /**
- * ProfilePictureScreen — Live camera with real front/back switching.
- *
- * Controls (bottom pill bar):
- *   [Gallery]   [Shutter]   [Flip Camera]
- *
- * On capture → auto-navigates to ProfileSetup with the photo URI.
+ * Profile picture — delegates UI to `SosProfileStyleCamera` (same as wardrobe add-item camera).
+ * On pick → uploads profile image, then navigates to ProfileSetup.
  */
 export const ProfilePictureScreen: React.FC<ProfilePictureScreenProps> = ({ navigation }) => {
-  const isFocused = useIsFocused();
-  const [facing, setFacing] = useState<CameraType>('back');
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
-  const shutterScale = useRef(new Animated.Value(1)).current;
+  const [isUploading, setIsUploading] = useState(false);
 
-  /* ── Shutter animation ── */
-  const animateShutter = () => {
-    Animated.sequence([
-      Animated.timing(shutterScale, {
-        toValue: 0.85,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.timing(shutterScale, {
-        toValue: 1,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  /* ── Take picture ── */
-  const takePicture = async () => {
-    animateShutter();
-
-    if (!cameraRef.current) return;
-
-    try {
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.8,
-        skipProcessing: Platform.OS === 'android',
-      });
-
-      if (photo?.uri) {
-        // Auto-navigate to the profile setup form with the captured image
-        navigation.navigate('ProfileSetup', { profileImage: photo.uri });
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
-    }
-  };
-
-  /* ── Gallery picker ── */
-  const openGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Needed', 'Gallery access is required to select a photo.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.9,
+  const uploadAndContinue = async (uri: string, source: 'camera' | 'gallery') => {
+    const filename = uri.split('/').pop();
+    console.log('[SOS_PROFILE_IMAGE] screen: starting upload pipeline', {
+      source,
+      filename,
+      platform: Platform.OS,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      navigation.navigate('ProfileSetup', { profileImage: result.assets[0].uri });
+    try {
+      setIsUploading(true);
+      const uploadResult = await userService.uploadProfileImage(uri);
+      console.log('[SOS_PROFILE_IMAGE] screen: upload finished, navigating to ProfileSetup', {
+        serverMessage: uploadResult.message,
+        usingServerUrl: Boolean(uploadResult.profileImageUrl),
+      });
+      notify({ type: 'success', message: uploadResult.message });
+      navigation.navigate('ProfileSetup', {
+        profileImage: uploadResult.profileImageUrl ?? uri,
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        console.error('[SOS_PROFILE_IMAGE] screen: upload error', {
+          code: error.code,
+          status: error.status,
+          message: error.message,
+          details: error.details,
+        });
+      } else {
+        console.error('[SOS_PROFILE_IMAGE] screen: upload error', error);
+      }
+      const message = error instanceof Error ? error.message : 'Failed to upload profile image.';
+      notify({ type: 'error', message });
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  /* ── Toggle front / back ── */
-  const toggleCamera = () => {
-    setFacing((current) => (current === 'back' ? 'front' : 'back'));
-  };
-
-  /* ── Permission states ── */
-  if (!permission) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Loading camera…</Text>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionTitle}>Camera Access</Text>
-        <Text style={styles.permissionText}>
-          We need camera access to capture your profile photo.
-        </Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  /* ── Grid overlay ── */
-  const renderGridOverlay = () => (
-    <View style={styles.gridOverlay} pointerEvents="none">
-      <View style={[styles.gridLine, styles.gridLineVertical, { left: '33.33%' }]} />
-      <View style={[styles.gridLine, styles.gridLineVertical, { left: '66.66%' }]} />
-      <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '33.33%' }]} />
-      <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '66.66%' }]} />
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile picture</Text>
-      </View>
-
-      <Text style={styles.subtitle}>Capture your profile image on a plain background</Text>
-
-      {/* Camera Preview */}
-      <View style={styles.previewContainer}>
-        <View style={styles.cameraContainer}>
-          {isFocused && (
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              facing={facing}
-            />
-          )}
-          {renderGridOverlay()}
-        </View>
-      </View>
-
-      {/* Bottom Controls */}
-      <View style={styles.controlsContainer}>
-        <View style={styles.controlsBar}>
-          {/* Gallery */}
-          <TouchableOpacity style={styles.actionIconButton} onPress={openGallery}>
-            <Image
-              source={require('../../../assets/camera/GalleryIcon.png')}
-              style={styles.actionIconImage}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
-          {/* Shutter */}
-          <TouchableOpacity style={styles.shutterButtonContainer} onPress={takePicture}>
-            <Animated.Image
-              source={require('../../../assets/camera/CaptureIcon.png')}
-              style={[styles.shutterImage, { transform: [{ scale: shutterScale }] }]}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
-          {/* Flip Camera */}
-          <TouchableOpacity style={styles.actionIconButton} onPress={toggleCamera}>
-            <Image
-              source={require('../../../assets/camera/CameraIcon.png')}
-              style={styles.actionIconImage}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.bottomSafeArea} />
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <SosProfileStyleCamera
+        headerMode="profile"
+        title="Profile picture"
+        subtitle="Capture your profile image on a plain background"
+        permissionTitle="Camera Access"
+        permissionBody="We need camera access to capture your profile photo."
+        onPickedImage={uploadAndContinue}
+        isProcessing={isUploading}
+        processingMessage="Uploading profile image..."
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
-  /* ── Permission screens ── */
-  permissionContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  permissionTitle: {
-    fontFamily: fontNames.bold,
-    fontSize: 24,
-    color: '#000000',
-    marginBottom: 12,
-  },
-  permissionText: {
-    fontFamily: fontNames.regular,
-    fontSize: 15,
-    color: '#666666',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  permissionButton: {
-    backgroundColor: '#0A0A0A',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    borderRadius: 16,
-  },
-  permissionButtonText: {
-    fontFamily: fontNames.medium,
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-
-  /* ── Header ── */
-  header: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: typography.title1.fontSize,
-    fontFamily: fontNames.bold,
-    fontWeight: '600',
-    color: '#000000',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: typography.subheadline.fontSize,
-    fontFamily: fontNames.regular,
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 24,
-  },
-
-  /* ── Camera preview ── */
-  previewContainer: {
-    flex: 1,
-    width: '100%',
-    paddingHorizontal: 21,
-    marginBottom: 24,
-  },
-  cameraContainer: {
-    flex: 1,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#000000',
-  },
-  camera: {
-    flex: 1,
-  },
-
-  /* ── Grid overlay ── */
-  gridOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  gridLine: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  gridLineVertical: {
-    width: 1,
-    height: '100%',
-  },
-  gridLineHorizontal: {
-    width: '100%',
-    height: 1,
-  },
-
-  /* ── Controls ── */
-  controlsContainer: {
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-  controlsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EAEAEA',
-    borderRadius: 50,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    gap: 32,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  actionIconButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionIconImage: {
-    width: '100%',
-    height: '100%',
-  },
-  shutterButtonContainer: {
-    width: 68,
-    height: 68,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shutterImage: {
-    width: 68,
-    height: 68,
-  },
-  bottomSafeArea: {
-    height: Platform.OS === 'ios' ? 20 : 10,
-  },
-});

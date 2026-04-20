@@ -1,0 +1,69 @@
+---
+description: Mandatory backend API reference for SOS app — contracts, tokens, integration status, gaps vs Hoppscotch Mobile API V1
+alwaysApply: true
+---
+
+# SOS — Backend API (always read before API work)
+
+## Canonical sources (read in this order)
+
+1. **`docs/SOS_BACKEND_API_REFERENCE.md`** — **Machine-readable catalog**: every Hoppscotch-exported route with method, path, auth, content-type, request/cURL samples, multipart fields, **integration status** (`integrated` / `partial` / `not_integrated`), and **app-only** routes (`refresh-token`, payments, outfits).
+2. **`docs/completeAPIDocumentation.html`** — Offline Hoppscotch **Mobile API V1** export; refresh when the live collection changes.
+3. **`docs/API_INTEGRATION_GUIDE.md`** — Plain-English **screen → service → flow**, FAQ, flowcharts.
+
+Online viewer (may require login): `https://api.styleonspot.com/view/f2fb9ef4-e921-404c-949d-4daf9f445155/CURRENT`
+
+**Rule:** Do not guess paths, field names, or auth. If `SOS_BACKEND_API_REFERENCE.md` and code disagree, trust **live backend + HTML export**, then update the MD file.
+
+---
+
+## Global contract (short)
+
+| Topic | Detail |
+|-------|--------|
+| **Base URL** | `EXPO_PUBLIC_API_BASE_URL` = `https://app.styleonspot.com/api/v1` (no duplicate `/v1` in `endpoints.ts` paths). |
+| **Public JSON** | `POST /auth/send-otp` `{ phone }`; `POST /auth/verify-otp` `{ phone, otp, name? }` — no Bearer. |
+| **Bearer** | `Authorization: Bearer <access_token>` on all other app calls unless noted. |
+| **Refresh** | `POST /auth/refresh-token` with refresh token body — **`apiClient`** only; often missing from static HTML export. |
+| **Envelope** | Typical `{ success, data, message }` — unwrap in `services/*`; errors → `ApiError` (`errors.ts`). |
+| **Multipart** | Onboarding + wardrobe items use **FormData**; field names are listed in **`SOS_BACKEND_API_REFERENCE.md` §6** and per-endpoint sections. |
+
+---
+
+## Where the app stands (summary)
+
+| Area | Integrated | Partial / not wired |
+|------|------------|---------------------|
+| **Auth** | Send OTP, verify OTP, resend (with fallback), logout | — |
+| **Token** | Refresh on 401 in `client.ts` | — |
+| **Onboarding** | status, profile image, full body, basic details, body shape, skin-tone-style, complete | **`GET /onboarding/options`** (no UI call) |
+| **Profile** | `GET`/`PUT /profile`, legacy `POST /users/me/profile-setup` | — |
+| **Wardrobe folders** | list, get, create, update, delete | **`POST /wardrobe/folders/reorder`** |
+| **Wardrobe items** | CRUD, list by folder, item image upload | **`GET /wardrobe/search`** (service only; **WardrobeFiltersScreen** UI not calling API), **bulk-delete**, **track-usage**, **analytics**, **items-usage**\* |
+| **Outfits** | `wardrobeService` outfits + saved | May 404 if not deployed |
+| **Virtual try-on** | initiate, poll, delete, react, rate, regenerate, lookbook, schedule | **`GET /virtual-tryon` list** (no history UI) |
+| **Sessions** | — | **`GET /sessions`**, **`DELETE /sessions/:id`** (doc only) |
+| **Payments** | `paymentService` methods exist | **Checkout UI** not fully wired to payment POSTs |
+
+\*Usage/analytics paths appear in the HTML export — see **`docs/SOS_BACKEND_API_REFERENCE.md`** for exact paths.
+
+---
+
+## Implementation location map
+
+| Layer | Path |
+|-------|------|
+| Path constants | `sos-app/src/api/endpoints.ts` |
+| HTTP + auth + refresh | `sos-app/src/api/client.ts`, `tokenManager.ts`, `config.ts` |
+| Feature calls | `sos-app/src/services/*.ts` |
+| Session / user hydration | `sos-app/src/store/AuthContext.tsx`, `UserContext.tsx`, `OutfitContext.tsx` |
+| Handoff doc | `memory.md` (repo root) |
+
+---
+
+## When you change the backend or routes
+
+1. Update **`docs/completeAPIDocumentation.html`** (re-export Hoppscotch) when the collection changes.
+2. Regenerate or hand-edit **`docs/SOS_BACKEND_API_REFERENCE.md`** so it stays the **single** deep spec.
+3. Adjust **`endpoints.ts`** + **`services/*`** + screens.
+4. Update **`docs/API_INTEGRATION_GUIDE.md`** (flows) and **`memory.md`** if behavior is user-visible.

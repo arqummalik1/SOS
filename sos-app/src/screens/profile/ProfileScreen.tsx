@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import { useAuth } from '../../store/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontNames } from '../../theme';
 import { typography } from '../../theme/typography';
+import { notify } from '../../utils/notify';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -27,12 +29,34 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
   const { user, clearUserData } = useUser();
   const { savedOutfits, clearSavedOutfits } = useOutfits();
   const { logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
-    clearUserData();
-    clearSavedOutfits();
-    navigation.navigate('First');
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            setIsLoggingOut(true);
+            try {
+              await logout();
+              clearUserData();
+              clearSavedOutfits();
+              notify({ type: 'success', message: 'Logged out successfully' });
+            } catch (error) {
+              console.error('[SOS_PROFILE] Logout error:', error);
+              notify({ type: 'error', message: 'Failed to logout. Please try again.' });
+            } finally {
+              setIsLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const stats = [
@@ -85,6 +109,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ navigation }) => {
 
             {/* Name */}
             <Text style={styles.name}>{user?.name || 'Guest'}</Text>
+            {user?.email ? <Text style={styles.subContact}>{user.email}</Text> : null}
+            {!user?.email && user?.phone ? (
+              <Text style={styles.subContact}>{user.phone}</Text>
+            ) : null}
 
             {/* Style Tags - Pill shaped */}
             <View style={styles.tagsContainer}>
@@ -233,10 +261,16 @@ const styles = StyleSheet.create({
   name: {
     ...typography.title1,
     color: '#111111',
-    marginBottom: 12,
+    marginBottom: 6,
     letterSpacing: -0.5,
   },
-  
+  subContact: {
+    ...typography.subheadline,
+    color: '#555555',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+
   // Style Tags - Pink pill shaped
   tagsContainer: {
     flexDirection: 'row',

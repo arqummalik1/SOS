@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,42 +7,85 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
+  ActivityIndicator,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { GlassView } from '../../components/ui/GlassView';
-import { GlassButton } from '../../components/ui/GlassButton';
 import { useUser } from '../../store/UserContext';
 import { spacing } from '../../theme/spacing';
-import { fontNames } from '../../theme/fonts';
 import { typography } from '../../theme/typography';
+import { ApiError } from '../../api/errors';
+import { notify } from '../../utils/notify';
 
 interface EditProfileScreenProps {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<Record<string, object | undefined>>;
 }
 
-export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
-  navigation,
-}) => {
-  const { user, updateProfile } = useUser();
-  const [name, setName] = useState(user?.name || '');
-  const [bio, setBio] = useState('Fashion enthusiast');
+export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({ navigation }) => {
+  const { user, updateProfile, refreshProfile } = useUser();
+  const [name, setName] = useState(user?.name ?? '');
+  const [height, setHeight] = useState(user?.height ?? '');
+  const [weight, setWeight] = useState(user?.weight ?? '');
+  const [dob, setDob] = useState(user?.dob ?? '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshProfile().catch(() => undefined);
+      if (user) {
+        setName(user.name ?? '');
+        setHeight(user.height ?? '');
+        setWeight(user.weight ?? '');
+        setDob(user.dob ?? '');
+      }
+    }, [refreshProfile, user])
+  );
 
   const handleSave = async () => {
-    await updateProfile({ name });
-    navigation.goBack();
+    if (isSaving) {
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        name: name.trim(),
+        height: height.trim(),
+        weight: weight.trim(),
+        dob: dob.trim(),
+      });
+      notify({ type: 'success', message: 'Profile updated successfully.' });
+      navigation.goBack();
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Could not update profile. Please try again.';
+      notify({ type: 'error', message });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <SafeContainer style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={isSaving}>
           <Ionicons name="close" size={28} color="#000000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.saveText}>Save</Text>
+        <TouchableOpacity onPress={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#BF5AF2" />
+          ) : (
+            <Text style={styles.saveText}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -56,76 +99,94 @@ export const EditProfileScreen: React.FC<EditProfileScreenProps> = ({
                 <Ionicons name="person" size={40} color="#999999" />
               </View>
             )}
-            <TouchableOpacity style={styles.cameraButton}>
+            <View style={styles.cameraButton}>
               <GlassView intensity="thin" borderRadius={20} style={styles.cameraButtonInner}>
                 <Ionicons name="camera" size={20} color="#000000" />
               </GlassView>
-            </TouchableOpacity>
+            </View>
           </View>
-          <TouchableOpacity>
-            <Text style={styles.changePhotoText}>Change Profile Photo</Text>
-          </TouchableOpacity>
+          <Text style={styles.changePhotoHint}>Profile photo is managed during onboarding.</Text>
         </View>
 
         <View style={styles.formSection}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Name</Text>
-            <View style={styles.inputContainer}>
+          <Field label="Name">
+            <Pressable style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, Platform.OS === 'web' && styles.inputWebOutline]}
                 value={name}
                 onChangeText={setName}
                 placeholder="Your name"
+                placeholderTextColor="#888888"
+                editable={!isSaving}
               />
-            </View>
-          </View>
+            </Pressable>
+          </Field>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Bio</Text>
-            <View style={styles.inputContainer}>
+          <Field label="Height">
+            <Pressable style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
-                value={bio}
-                onChangeText={setBio}
-                placeholder="Tell us about yourself"
-                multiline
-                numberOfLines={3}
+                style={[styles.input, Platform.OS === 'web' && styles.inputWebOutline]}
+                value={height}
+                onChangeText={setHeight}
+                placeholder="e.g. 164"
+                placeholderTextColor="#888888"
+                keyboardType="decimal-pad"
+                editable={!isSaving}
               />
-            </View>
-          </View>
+            </Pressable>
+          </Field>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <View style={styles.inputContainer}>
+          <Field label="Weight">
+            <Pressable style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, Platform.OS === 'web' && styles.inputWebOutline]}
+                value={weight}
+                onChangeText={setWeight}
+                placeholder="e.g. 64"
+                placeholderTextColor="#888888"
+                keyboardType="decimal-pad"
+                editable={!isSaving}
+              />
+            </Pressable>
+          </Field>
+
+          <Field label="Date of birth">
+            <Pressable style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, Platform.OS === 'web' && styles.inputWebOutline]}
+                value={dob}
+                onChangeText={setDob}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#888888"
+                editable={!isSaving}
+                autoCapitalize="none"
+              />
+            </Pressable>
+          </Field>
+
+          <Field label="Phone">
+            <Pressable style={[styles.inputContainer, styles.inputDisabled]}>
+              <TextInput
+                style={[styles.input, Platform.OS === 'web' && styles.inputWebOutline]}
                 value={user?.phone || ''}
                 editable={false}
                 placeholder="Phone number"
+                placeholderTextColor="#888888"
               />
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Style Preferences</Text>
-          <TouchableOpacity style={styles.row}>
-            <Text style={styles.rowText}>Update Style Preferences</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Color Palette</Text>
-          <TouchableOpacity style={styles.row}>
-            <Text style={styles.rowText}>Update Color Preferences</Text>
-            <Ionicons name="chevron-forward" size={20} color="#666666" />
-          </TouchableOpacity>
+            </Pressable>
+          </Field>
         </View>
       </ScrollView>
     </SafeContainer>
   );
 };
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <View style={styles.inputGroup} accessibilityLabel={label}>
+    <Text style={styles.label}>{label}</Text>
+    {children}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -179,6 +240,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
+    opacity: 0.45,
   },
   cameraButtonInner: {
     width: 40,
@@ -186,9 +248,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  changePhotoText: {
-    ...typography.subheadline,
-    color: '#BF5AF2',
+  changePhotoHint: {
+    ...typography.caption1,
+    color: '#666666',
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
   },
   formSection: {
     marginBottom: spacing.xxl,
@@ -204,36 +268,22 @@ const styles = StyleSheet.create({
   inputContainer: {
     backgroundColor: 'rgba(120,120,128,0.12)',
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(120,120,128,0.2)',
     paddingHorizontal: spacing.lg,
     minHeight: 56,
     justifyContent: 'center',
   },
+  inputDisabled: {
+    opacity: 0.75,
+  },
   input: {
     ...typography.body,
     color: '#000000',
+    flex: 1,
+    minHeight: 48,
     paddingVertical: spacing.md,
   },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    ...typography.subheadline,
-    color: '#666666',
-    marginBottom: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(120,120,128,0.12)',
-    borderRadius: 14,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  rowText: {
-    ...typography.body,
-    color: '#000000',
+  inputWebOutline: {
+    outlineWidth: 0,
+    outlineStyle: 'none',
   },
 });

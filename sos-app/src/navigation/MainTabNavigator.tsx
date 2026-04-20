@@ -1,15 +1,16 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { HomeStackNavigator } from './HomeStackNavigator';
 import { ProfileStackNavigator } from './ProfileStackNavigator';
-import { WardrobeStackNavigator } from './WardrobeStackNavigator';
+import { WardrobeStackNavigator, type WardrobeStackParamList } from './WardrobeStackNavigator';
 import { CalendarStackNavigator } from './CalendarStackNavigator';
 import { AddScreen } from '../screens/add/AddScreen';
 import { CustomTabBar } from './components/CustomTabBar';
 
 export type MainTabParamList = {
   Home: undefined;
-  Wardrobe: undefined;
+  Wardrobe: NavigatorScreenParams<WardrobeStackParamList> | undefined;
   Add: undefined;
   Calendar: undefined;
   Profile: undefined;

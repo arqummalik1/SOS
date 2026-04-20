@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Alert,
   Platform,
@@ -10,11 +10,15 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography } from '../../theme/typography';
+import { useUser } from '../../store/UserContext';
+import { ApiError } from '../../api/errors';
 
 interface SettingsScreenProps {
   navigation: NativeStackNavigationProp<any>;
@@ -75,8 +79,17 @@ const SectionBlock: React.FC<{ title: string; children: React.ReactNode }> = ({ 
   </View>
 );
 
+const DetailRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <View style={styles.detailRow}>
+    <Text style={styles.detailLabel}>{label}</Text>
+    <Text style={styles.detailValue}>{value}</Text>
+  </View>
+);
+
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const { width } = useWindowDimensions();
+  const { user, refreshProfile } = useUser();
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false);
   const contentWidth = Math.min(380, width - 32);
   const [toggles, setToggles] = useState<Record<ToggleKey, boolean>>({
     pushNotifications: true,
@@ -105,6 +118,34 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
     Alert.alert('Setting', message);
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      setIsRefreshingProfile(true);
+      void refreshProfile()
+        .catch((error) => {
+          if (cancelled) {
+            return;
+          }
+          if (error instanceof ApiError) {
+            console.warn('[SOS_SETTINGS] Profile refresh failed', error.code);
+            return;
+          }
+          console.warn('[SOS_SETTINGS] Profile refresh failed', error);
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setIsRefreshingProfile(false);
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [refreshProfile])
+  );
+
+  const dash = (v: string | null | undefined) => (v && String(v).trim() ? String(v).trim() : '—');
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={[styles.header, { width: contentWidth }]}>
@@ -117,9 +158,41 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) =>
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Setting</Text>
+        {isRefreshingProfile ? (
+          <View style={styles.headerSpinner} accessibilityLabel="Loading profile">
+            <ActivityIndicator size="small" color="#6B5B45" />
+          </View>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={[styles.scrollContent, { width: contentWidth }]}>
+        <SectionBlock title="Your profile">
+          <DetailRow label="Name" value={dash(user?.name)} />
+          <DetailRow label="Phone" value={dash(user?.phone)} />
+          <DetailRow label="Email" value={dash(user?.email)} />
+          <DetailRow label="Height" value={dash(user?.height)} />
+          <DetailRow label="Weight" value={dash(user?.weight)} />
+          <DetailRow label="Date of birth" value={dash(user?.dob)} />
+          <DetailRow label="Body shape" value={dash(user?.bodyShape)} />
+          <DetailRow label="Skin tone" value={dash(user?.skinTone)} />
+          <DetailRow
+            label="Style preferences"
+            value={
+              user?.stylePreferences?.length
+                ? user.stylePreferences.join(', ')
+                : '—'
+            }
+          />
+          <TouchableOpacity
+            style={styles.editProfileLink}
+            onPress={() => navigation.navigate('EditProfile')}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.editProfileLinkText}>Edit profile</Text>
+            <Ionicons name="chevron-forward" size={18} color="#6B5B45" />
+          </TouchableOpacity>
+        </SectionBlock>
+
         <SectionBlock title="Account Settings">
           <TextRow
             label="Manage active sessions/devices"
@@ -252,6 +325,38 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...typography.title3,
     color: '#111111',
+    fontWeight: '600',
+  },
+  headerSpinner: {
+    position: 'absolute',
+    right: 0,
+    top: 8,
+  },
+  detailRow: {
+    marginBottom: sectionSpacing.row,
+    paddingLeft: 14,
+  },
+  detailLabel: {
+    ...typography.caption1,
+    color: '#6B6B6B',
+    marginBottom: 2,
+  },
+  detailValue: {
+    ...typography.callout,
+    color: '#101010',
+    fontWeight: '500',
+  },
+  editProfileLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingLeft: 14,
+    paddingVertical: 10,
+  },
+  editProfileLinkText: {
+    ...typography.callout,
+    color: '#4A3F2A',
     fontWeight: '600',
   },
   scrollContent: {

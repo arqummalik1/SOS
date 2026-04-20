@@ -1,78 +1,61 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Dimensions,
+  ActivityIndicator,
   Image,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { fontNames } from '../../theme/fonts';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { typography } from '../../theme/typography';
+import { gradients } from '../../theme/gradients';
+import { WardrobeStackParamList } from '../../navigation/WardrobeStackNavigator';
+import { wardrobeFolderService } from '../../services/wardrobeFolderService';
+import { WardrobeFolder } from '../../models/WardrobeFolder.model';
+import { useAuth } from '../../store/AuthContext';
+import { ApiError } from '../../api/errors';
+import { notify } from '../../utils/notify';
+import { logSosError } from '../../utils/logSosError';
+
+const LOG = '[SOS_MY_WARDROBE]';
+import { CreateFolderModal } from '../../components/wardrobe/CreateFolderModal';
 
 type MyWardrobeScreenProps = {
-  navigation: NativeStackNavigationProp<any>;
+  navigation: NativeStackNavigationProp<WardrobeStackParamList, 'MyWardrobe'>;
 };
-
-type WardrobeItem = {
-  id: string;
-  tag: string;
-  name: string;
-  count: string;
-  image: any;
-};
-
-const { width } = Dimensions.get('window');
 
 const FILTERS = ['All', 'Tops', 'T-shirt', 'Trousers', 'Dresses'];
 
-const ITEMS: WardrobeItem[] = [
-  {
-    id: '1',
-    tag: 'TIMELESS',
-    name: 'T-Shirt',
-    count: '12',
-    image: require('../../../assets/MyWardrobe/women-blank-red-tshirt-mockup-600nw-2500913723 1.png'),
-  },
-  {
-    id: '2',
-    tag: 'MODERN',
-    name: 'Tops',
-    count: '30',
-    image: require('../../../assets/MyWardrobe/WomenUpper.png'),
-  },
-  {
-    id: '3',
-    tag: 'ELEGANT',
-    name: 'Dresses',
-    count: '17',
-    image: require('../../../assets/MyWardrobe/WomenDress.png'),
-  },
-  {
-    id: '4',
-    tag: 'POLISHED',
-    name: 'Trousers',
-    count: '08',
-    image: require('../../../assets/MyWardrobe/download 5.png'),
-  },
-  {
-    id: '5',
-    tag: 'TIMELESS',
-    name: 'T-Shirt',
-    count: '12',
-    image: require('../../../assets/MyWardrobe/women-blank-red-tshirt-mockup-600nw-2500913723 1 (1).png'),
-  },
-  {
-    id: '6',
-    tag: 'TIMELESS',
-    name: 'T-Shirt',
-    count: '12',
-    image: require('../../../assets/MyWardrobe/women-blank-red-tshirt-mockup-600nw-2500913723 1.png'),
-  },
-];
+const PLACEHOLDER = require('../../../assets/MyWardrobe/WomenUpper.png');
+
+const folderTagLabel = (name: string): string => {
+  const first = name.trim().split(/\s+/)[0] || name.trim() || 'SOS';
+  return first.toUpperCase().slice(0, 10);
+};
+
+const matchesFilter = (folder: WardrobeFolder, filter: string): boolean => {
+  if (filter === 'All') return true;
+  const n = folder.name.toLowerCase();
+  if (filter === 'Tops') return n.includes('top');
+  if (filter === 'T-shirt') return n.includes('shirt') || n.includes('t-shirt') || n.includes('tee');
+  if (filter === 'Trousers') return n.includes('trouser') || n.includes('pant');
+  if (filter === 'Dresses') return n.includes('dress');
+  return true;
+};
+
+const matchesSearch = (folder: WardrobeFolder, q: string): boolean => {
+  const s = q.trim().toLowerCase();
+  if (!s) return true;
+  return folder.name.toLowerCase().includes(s) || folder.description.toLowerCase().includes(s);
+};
 
 const SearchGlyph: React.FC = () => (
   <View style={styles.searchGlyphWrap}>
@@ -106,17 +89,72 @@ const ListGlyph: React.FC<{ active: boolean }> = ({ active }) => (
 );
 
 export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const { state: authState } = useAuth();
+  const contentWidth = Math.min(400, width - 28);
+  const gridCardWidth = (contentWidth - 12) / 2;
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [isGridView, setIsGridView] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [folders, setFolders] = useState<WardrobeFolder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const filteredItems = useMemo(() => {
-    if (selectedFilter === 'All') return ITEMS;
-    if (selectedFilter === 'Tops') return ITEMS.filter((item) => item.name === 'Tops');
-    if (selectedFilter === 'T-shirt') return ITEMS.filter((item) => item.name === 'T-Shirt');
-    if (selectedFilter === 'Trousers') return ITEMS.filter((item) => item.name === 'Trousers');
-    if (selectedFilter === 'Dresses') return ITEMS.filter((item) => item.name === 'Dresses');
-    return ITEMS;
-  }, [selectedFilter]);
+  const loadFolders = useCallback(
+    async (mode: 'initial' | 'refresh' | 'silent') => {
+      if (!authState.isAuthenticated || !authState.isOnboarded) {
+        setFolders([]);
+        setIsLoading(false);
+        return;
+      }
+      if (mode === 'initial') {
+        setIsLoading(true);
+      }
+      if (mode === 'refresh') {
+        setIsRefreshing(true);
+      }
+      try {
+        const list = await wardrobeFolderService.listFolders();
+        setFolders(list);
+      } catch (error) {
+        logSosError(LOG, 'listFolders', error);
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'Could not load wardrobe folders.';
+        notify({ type: 'error', message });
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [authState.isAuthenticated, authState.isOnboarded]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadFolders('initial');
+    }, [loadFolders])
+  );
+
+  const filteredFolders = useMemo(() => {
+    return folders.filter(
+      (f) => matchesFilter(f, selectedFilter) && matchesSearch(f, searchQuery)
+    );
+  }, [folders, selectedFilter, searchQuery]);
+
+  const openFolder = (folder: WardrobeFolder) => {
+    navigation.navigate('MyItems', {
+      folderId: folder.id,
+      folderName: folder.name,
+      folder,
+    });
+  };
+
+  const countLabel = (n: number) => (n < 10 ? `0${n}` : String(n));
 
   return (
     <View style={styles.container}>
@@ -126,8 +164,11 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: Math.max(14, (width - contentWidth) / 2) }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={() => void loadFolders('refresh')} />
+        }
       >
         <TouchableOpacity style={styles.backRow} onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Text style={styles.backArrow}>‹</Text>
@@ -141,7 +182,14 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
 
         <View style={styles.searchBar}>
           <SearchGlyph />
-          <Text style={styles.searchText}>Look Into Your Wardrobe</Text>
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Look Into Your Wardrobe"
+            placeholderTextColor="#6B6B6B"
+            returnKeyType="search"
+          />
           <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('WardrobeFilters')}>
             <FilterGlyph />
           </TouchableOpacity>
@@ -157,7 +205,13 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
                 onPress={() => setSelectedFilter(filter)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{filter}</Text>
+                {isActive ? (
+                  <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.filterPillGradient}>
+                    <Text style={[styles.filterText, styles.filterTextActive]}>{filter}</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={styles.filterText}>{filter}</Text>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -170,7 +224,17 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
         />
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.createButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.createButton}
+            activeOpacity={0.85}
+            onPress={() => {
+              if (!authState.isAuthenticated || !authState.isOnboarded) {
+                notify({ type: 'error', message: 'Please complete onboarding first' });
+                return;
+              }
+              setCreateOpen(true);
+            }}
+          >
             <Text style={styles.createButtonText}>Create Wardrobe</Text>
             <Text style={styles.createButtonPlus}>+</Text>
           </TouchableOpacity>
@@ -193,58 +257,81 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
           </View>
         </View>
 
-        {isGridView ? (
+        {isLoading ? (
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator size="large" color="#9B7BA0" />
+            <Text style={styles.loadingCaption}>Loading folders…</Text>
+          </View>
+        ) : filteredFolders.length === 0 ? (
+          <View style={styles.emptyBlock}>
+            <Text style={styles.emptyTitle}>No folders yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Create a wardrobe folder to organize your pieces. Pull down to refresh.
+            </Text>
+          </View>
+        ) : isGridView ? (
           <View style={styles.gridWrap}>
-            {filteredItems.map((item) => (
+            {filteredFolders.map((folder) => (
               <TouchableOpacity
-                key={item.id}
-                style={styles.gridCard}
+                key={folder.id}
+                style={[styles.gridCard, { width: gridCardWidth }]}
                 activeOpacity={0.9}
-                onPress={() => navigation.navigate('VirtualTryOn')}
+                onPress={() => openFolder(folder)}
               >
-                <View style={styles.gridTagWrap}>
-                  <Text style={styles.gridTag}>{item.tag}</Text>
-                </View>
+                <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.gridTagWrap}>
+                  <Text style={styles.gridTag}>{folderTagLabel(folder.name)}</Text>
+                </LinearGradient>
                 <View style={styles.gridImageWrap}>
-                  <Image source={item.image} style={styles.gridImage} resizeMode="contain" />
+                  {folder.featureImageUrl ? (
+                    <Image source={{ uri: folder.featureImageUrl }} style={styles.gridImage} resizeMode="contain" />
+                  ) : (
+                    <Image source={PLACEHOLDER} style={styles.gridImage} resizeMode="contain" />
+                  )}
                 </View>
                 <View style={styles.gridBottomRow}>
-                  <Text style={styles.gridName}>{item.name}</Text>
-                  <View style={styles.countBadge}>
-                    <Text style={styles.countBadgeText}>{item.count}</Text>
-                  </View>
+                  <Text style={styles.gridName}>{folder.name}</Text>
+                  <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{countLabel(folder.itemCount)}</Text>
+                  </LinearGradient>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         ) : (
           <View style={styles.listWrap}>
-            {filteredItems.map((item) => (
-              <View key={item.id} style={styles.listItemRow}>
+            {filteredFolders.map((folder) => (
+              <View key={folder.id} style={styles.listItemRow}>
                 <TouchableOpacity
                   style={styles.listImageCard}
                   activeOpacity={0.9}
-                  onPress={() => navigation.navigate('VirtualTryOn')}
+                  onPress={() => openFolder(folder)}
                 >
-                  <Image source={item.image} style={styles.listImage} resizeMode="contain" />
+                  <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.listImageCardGradient} />
+                  {folder.featureImageUrl ? (
+                    <Image source={{ uri: folder.featureImageUrl }} style={styles.listImage} resizeMode="contain" />
+                  ) : (
+                    <Image source={PLACEHOLDER} style={styles.listImage} resizeMode="contain" />
+                  )}
                 </TouchableOpacity>
 
                 <View style={styles.listTextCol}>
-                  <Text style={styles.listTag}>{item.tag}</Text>
+                  <Text style={styles.listTag}>{folderTagLabel(folder.name)}</Text>
                   <View style={styles.listNameRow}>
-                    <Text style={styles.listName}>{item.name}</Text>
-                    <View style={styles.countBadge}>
-                      <Text style={styles.countBadgeText}>{item.count}</Text>
-                    </View>
+                    <Text style={styles.listName}>{folder.name}</Text>
+                    <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>{countLabel(folder.itemCount)}</Text>
+                    </LinearGradient>
                   </View>
 
                   <TouchableOpacity
                     style={styles.viewDetailsButton}
                     activeOpacity={0.85}
-                    onPress={() => navigation.navigate('EditItemDetails')}
+                    onPress={() => openFolder(folder)}
                   >
-                    <Text style={styles.viewDetailsText}>View Details</Text>
-                    <Text style={styles.viewDetailsArrow}>→</Text>
+                    <LinearGradient colors={gradients.sospink.colors} start={gradients.sospink.start} end={gradients.sospink.end} style={styles.viewDetailsButtonGradient}>
+                      <Text style={styles.viewDetailsText}>Open folder</Text>
+                      <Text style={styles.viewDetailsArrow}>→</Text>
+                    </LinearGradient>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -254,6 +341,12 @@ export const MyWardrobeScreen: React.FC<MyWardrobeScreenProps> = ({ navigation }
 
         <View style={styles.bottomGap} />
       </ScrollView>
+
+      <CreateFolderModal
+        visible={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={() => void loadFolders('silent')}
+      />
     </View>
   );
 };
@@ -270,7 +363,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 14,
     paddingBottom: 20,
   },
   backRow: {
@@ -338,6 +430,37 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: '#6B6B6B',
   },
+  searchInput: {
+    flex: 1,
+    ...typography.small,
+    color: '#1A1A1A',
+    paddingVertical: 0,
+    minHeight: 40,
+  },
+  loadingBlock: {
+    marginTop: 32,
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingCaption: {
+    ...typography.footnote,
+    color: '#666666',
+  },
+  emptyBlock: {
+    marginTop: 28,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    ...typography.title3,
+    color: '#333333',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    ...typography.footnote,
+    color: '#666666',
+    textAlign: 'center',
+  },
   filterGlyphWrap: {
     width: 14,
     gap: 2,
@@ -368,8 +491,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F3',
   },
   filterPillActive: {
-    backgroundColor: '#D6CDD0',
+    backgroundColor: 'transparent',
     borderColor: '#D6CDD0',
+    overflow: 'hidden',
+  },
+  filterPillGradient: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterText: {
     ...typography.subheadline,
@@ -470,7 +600,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   gridCard: {
-    width: (width - 40) / 2,
     backgroundColor: '#ECECEC',
     borderRadius: 13,
     marginBottom: 12,
@@ -536,10 +665,15 @@ const styles = StyleSheet.create({
     width: 120,
     height: 150,
     borderRadius: 11,
-    backgroundColor: '#C7B0CA',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  listImageCardGradient: {
+    ...StyleSheet.absoluteFillObject,
   },
   listImage: {
     width: 88,
@@ -568,7 +702,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#D9CEDB',
+    backgroundColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  viewDetailsButtonGradient: {
+    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,

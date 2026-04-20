@@ -48,7 +48,7 @@ export const FirstScreen: React.FC<OccasionSelectionScreenProps> = ({ navigation
   const customInputRef = useRef<TextInput>(null);
 
   const horizontalPadding = Math.max(16, Math.min(24, width * 0.06));
-  const gridGap = Math.max(10, Math.min(16, width * 0.03));
+  const gridGap = 12;
   const cardWidth = (width - horizontalPadding * 2 - gridGap) / 2;
   const cardHeight = Math.max(82, Math.min(92, cardWidth * 0.52));
   const continueWidth = Math.max(220, Math.min(300, width * 0.59));

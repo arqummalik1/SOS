@@ -12,6 +12,7 @@ import {
   StatusBar,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
@@ -19,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
 import { fontNames } from '../../theme/fonts';
 import { AuthStackParamList } from '../../navigation/AuthNavigator';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 const { width } = Dimensions.get('window');
 const IMAGE_WIDTH = width - 48;
@@ -98,6 +101,7 @@ const DropdownModal: React.FC<DropdownModalProps> = ({
 // ────────────────────────────────────────────────────────
 export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigation, route }) => {
   const profileImage = route.params?.profileImage;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
   const [name, setName]       = useState('');
@@ -113,11 +117,59 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigati
   const openDropdown  = useCallback((key: string) => setActiveDropdown(key), []);
   const closeDropdown = useCallback(() => setActiveDropdown(null), []);
 
-  const handleNext = () => {
-    navigation.navigate('FullBodyPhoto', {
-      profileImage,
-      profileData: { name, height, weight, dob: `${day} ${month} ${year}` },
-    });
+  const formatDateOfBirth = () => {
+    const monthIndex = MONTHS.indexOf(month) + 1;
+    const safeMonth = monthIndex > 0 ? monthIndex : 1;
+    const safeDay = Math.max(1, Math.min(31, Number(day)));
+    return `${year}-${String(safeMonth).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
+  };
+
+  const normalizeMetricValue = (value: string) => value.replace(/[^\d]/g, '');
+
+  const handleNext = async () => {
+    if (isSubmitting) return;
+
+    const sanitizedName = name.trim();
+    const normalizedHeight = normalizeMetricValue(height);
+    const normalizedWeight = normalizeMetricValue(weight);
+    const dateOfBirth = formatDateOfBirth();
+
+    if (!sanitizedName) {
+      notify({ type: 'error', message: 'Name is required.' });
+      return;
+    }
+    if (!normalizedHeight || !normalizedWeight) {
+      notify({ type: 'error', message: 'Please provide valid height and weight.' });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const result = await userService.saveOnboardingBasicDetails({
+        name: sanitizedName,
+        height: normalizedHeight,
+        weight: normalizedWeight,
+        date_of_birth: dateOfBirth,
+      });
+
+      notify({ type: 'success', message: result.message });
+      navigation.navigate('FullBodyPhoto', {
+        profileImage,
+        profileData: {
+          name: sanitizedName,
+          height: normalizedHeight,
+          weight: normalizedWeight,
+          dob: dateOfBirth,
+        },
+      });
+    } catch (error) {
+      notify({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Failed to save basic details.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -252,11 +304,16 @@ export const ProfileSetupScreen: React.FC<ProfileSetupScreenProps> = ({ navigati
         {/* ── Next Button ── */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.nextButton}
+            style={[styles.nextButton, isSubmitting && styles.nextButtonDisabled]}
             onPress={handleNext}
+            disabled={isSubmitting}
             activeOpacity={0.9}
           >
-            <Text style={styles.buttonText}>Next</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>Next</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -544,6 +601,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 5,
+  },
+  nextButtonDisabled: {
+    opacity: 0.75,
   },
   buttonText: {
     fontFamily: fontNames.medium,

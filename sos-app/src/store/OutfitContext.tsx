@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Outfit } from '../models/Outfit.model';
 import { mockOutfits } from '../data/outfits.mock';
+import { wardrobeService } from '../services/wardrobeService';
+import { useAuth } from './AuthContext';
 
 type OutfitContextType = {
   outfits: Outfit[];
@@ -19,18 +21,46 @@ type OutfitContextType = {
 const OutfitContext = createContext<OutfitContextType | undefined>(undefined);
 
 export const OutfitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [outfits] = useState<Outfit[]>(mockOutfits);
+  const { state: authState } = useAuth();
+  const [outfits, setOutfits] = useState<Outfit[]>(mockOutfits);
   const [savedOutfits, setSavedOutfits] = useState<string[]>([]);
 
   useEffect(() => {
-    loadSavedOutfits();
-  }, []);
+    if (!authState.isAuthenticated) {
+      setOutfits(mockOutfits);
+      setSavedOutfits([]);
+      return;
+    }
+    if (!authState.isOnboarded) {
+      return;
+    }
+    void loadOutfits();
+    void loadSavedOutfits();
+  }, [authState.isAuthenticated, authState.isOnboarded]);
+
+  const loadOutfits = async () => {
+    try {
+      const remoteOutfits = await wardrobeService.getOutfits();
+      if (remoteOutfits.length > 0) {
+        setOutfits(remoteOutfits);
+      }
+    } catch (error) {
+      console.error('Error loading outfits:', error);
+    }
+  };
 
   const loadSavedOutfits = async () => {
     try {
-      const saved = await AsyncStorage.getItem('savedOutfits');
-      if (saved) {
-        setSavedOutfits(JSON.parse(saved));
+      const remoteSaved = await wardrobeService.getSavedOutfitIds();
+      if (remoteSaved.length > 0) {
+        setSavedOutfits(remoteSaved);
+        await AsyncStorage.setItem('savedOutfits', JSON.stringify(remoteSaved));
+        return;
+      }
+
+      const localSaved = await AsyncStorage.getItem('savedOutfits');
+      if (localSaved) {
+        setSavedOutfits(JSON.parse(localSaved));
       }
     } catch (error) {
       console.error('Error loading saved outfits:', error);
@@ -39,9 +69,10 @@ export const OutfitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const saveOutfit = async (id: string) => {
     try {
-      const newSaved = [...savedOutfits, id];
+      const newSaved = Array.from(new Set([...savedOutfits, id]));
       setSavedOutfits(newSaved);
       await AsyncStorage.setItem('savedOutfits', JSON.stringify(newSaved));
+      await wardrobeService.saveOutfit(id);
     } catch (error) {
       console.error('Error saving outfit:', error);
     }
@@ -52,6 +83,7 @@ export const OutfitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const newSaved = savedOutfits.filter((savedId) => savedId !== id);
       setSavedOutfits(newSaved);
       await AsyncStorage.setItem('savedOutfits', JSON.stringify(newSaved));
+      await wardrobeService.unsaveOutfit(id);
     } catch (error) {
       console.error('Error unsaving outfit:', error);
     }

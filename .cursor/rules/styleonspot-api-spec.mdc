@@ -1,0 +1,26 @@
+---
+description: Style On Spot — links to official API viewer + offline export (detail lives in sos-backend-api-reference.mdc)
+alwaysApply: true
+---
+
+# Style On Spot — official API viewer + offline export
+
+**Primary machine-readable spec in this repo:** `docs/SOS_BACKEND_API_REFERENCE.md` (all exported routes, bodies, auth, integration status).
+
+**Always-applied rule with integration summary:** `.cursor/rules/sos-backend-api-reference.mdc`
+
+**Official API viewer (Hoppscotch):**  
+https://api.styleonspot.com/view/f2fb9ef4-e921-404c-949d-4daf9f445155/CURRENT
+
+**Offline mirror (same collection):** `docs/completeAPIDocumentation.html` — re-export when the live collection changes.
+
+**Plain-English flows:** `docs/API_INTEGRATION_GUIDE.md`
+
+**Handoff:** `memory.md`
+
+---
+
+## Recap
+
+- HTTP only through **`sos-app/src/api`** (`apiClient`); feature calls through **`sos-app/src/services`**.
+- Verify contracts in **`docs/SOS_BACKEND_API_REFERENCE.md`** or the HTML export before changing request shapes.

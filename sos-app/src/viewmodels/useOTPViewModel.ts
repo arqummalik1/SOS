@@ -1,13 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../store/AuthContext';
+import { useApiRequest } from '../hooks/useApiRequest';
 
 export const useOTPViewModel = () => {
-  const { verifyOTP } = useAuth();
+  const { verifyOTP, resendOTP } = useAuth();
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendTimer, setResendTimer] = useState(30);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const verifyRequest = useApiRequest();
+  const resendRequest = useApiRequest();
 
   const startTimer = useCallback(() => {
     // Clear any existing interval before starting a new one
@@ -55,34 +57,49 @@ export const useOTPViewModel = () => {
       setError('Please enter all 6 digits');
       return false;
     }
-
-    setIsLoading(true);
     setError(null);
 
-    try {
-      const otpString = otp.join('');
-      const success = await verifyOTP(otpString);
-      if (!success) {
-        setError('Invalid OTP. Please try again.');
+    const result = await verifyRequest.execute(
+      async () => {
+        const otpString = otp.join('');
+        const verification = await verifyOTP(otpString);
+        if (!verification.success) {
+          setError(verification.message || 'Invalid OTP. Please try again.');
+        }
+        return verification.success ? verification.message : null;
+      },
+      {
+        onError: (requestError) => {
+          setError(requestError.message || 'Verification failed. Please try again.');
+        },
       }
-      return success;
-    } catch (err) {
-      setError('Verification failed. Please try again.');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [otp, isComplete, verifyOTP]);
+    );
+    return result;
+  }, [otp, isComplete, verifyOTP, verifyRequest]);
 
-  const handleResend = useCallback(() => {
-    // Logic for actual resend would go here
-    startTimer(); // Restart the countdown timer
-  }, [startTimer]);
+  const handleResend = useCallback(async () => {
+    setError(null);
+    const result = await resendRequest.execute(
+      async () => {
+        const message = await resendOTP();
+        startTimer();
+        return message;
+      },
+      {
+        onError: (requestError) => {
+          setError(requestError.message || 'Failed to resend OTP.');
+        },
+      }
+    );
+    return result;
+  }, [resendRequest, resendOTP, startTimer]);
 
   return {
     otp,
     isComplete,
-    isLoading,
+    isLoading: verifyRequest.isLoading,
+    isVerifying: verifyRequest.isLoading,
+    isResending: resendRequest.isLoading,
     error,
     resendTimer,
     handleChange,

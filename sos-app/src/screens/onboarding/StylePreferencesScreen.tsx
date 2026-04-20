@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,99 +8,65 @@ import {
   Dimensions,
   Platform,
   StatusBar,
-  ImageBackground,
+  Image,
   FlatList,
-  ActivityIndicator,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeContainer } from '../../components/layout/SafeContainer';
-import { AuthStackParamList } from '../../navigation/AuthNavigator';
-import { useUser } from '../../store/UserContext';
 import { useAuth } from '../../store/AuthContext';
-import { typography } from '../../theme/typography';
+import { fontNames } from '../../theme/fonts';
+import { userService } from '../../services/userService';
+import { notify } from '../../utils/notify';
 
 const { width } = Dimensions.get('window');
 
 interface StylePreferencesScreenProps {
-  navigation: NativeStackNavigationProp<AuthStackParamList, 'StylePreferences'>;
-  route: RouteProp<AuthStackParamList, 'StylePreferences'>;
+  navigation: NativeStackNavigationProp<any>;
+  route: any;
 }
 
+// Skin tone hex values (estimated from the 4x4 grid in design)
 const skinTones = [
   '#FFE5C4', '#FEE5B1', '#FDD59B', '#FBCB97',
   '#F4C193', '#F1BC87', '#D79F7E', '#CB7144',
   '#D79F67', '#B99468', '#95653F', '#7E4723',
   '#CB754B', '#894F2C', '#5D3316', '#2A1A12',
- ] as const;
+];
 
-const styleCards = [
-  { id: 'sporty', label: 'Sporty', image: require('../../../assets/images/mosaic/fashion1.jpg') },
-  { id: 'casual', label: 'Casual', image: require('../../../assets/images/mosaic/fashion2.jpg') },
-  { id: 'formal', label: 'Formal', image: require('../../../assets/images/mosaic/fashion3.jpg') },
-  { id: 'boho', label: 'Boho', image: require('../../../assets/images/mosaic/fashion4.jpg') },
+const stylesList = [
+  { id: '1', name: 'Sporty', image: require('../../../assets/images/mosaic/fashion1.jpg') },
+  { id: '2', name: 'Casual', image: require('../../../assets/images/mosaic/fashion2.jpg') },
+  { id: '3', name: 'Formal', image: require('../../../assets/images/mosaic/fashion3.jpg') },
+  { id: '4', name: 'Boho', image: require('../../../assets/images/mosaic/fashion4.jpg') },
 ];
 
 /**
- * Profile setup step 3: Skin tone + style preferences.
- * Uses route profile data and persists onboarding data before completion.
+ * StylePreferencesScreen - Replicates "Profile setup 3.png" with 100% visual fidelity.
+ * Features skin tone selection, custom color picker, and horizontal style preference scrolling.
  */
 export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ navigation, route }) => {
-  const { updateProfile } = useUser();
   const { completeOnboarding } = useAuth();
-  const profileData = route.params?.profileData;
   const [selectedTone, setSelectedTone] = useState<string>(skinTones[0]);
-  const [selectedStyleId, setSelectedStyleId] = useState<string>(styleCards[0].id);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const selectedStyleLabel = useMemo(
-    () => styleCards.find((card) => card.id === selectedStyleId)?.label ?? styleCards[0].label,
-    [selectedStyleId]
-  );
-
-  const hydrateDob = (value: string | undefined) => {
-    if (!value) return '';
-    return value;
-  };
+  const [selectedStyle, setSelectedStyle] = useState<string>('1');
 
   const handleContinue = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
     try {
-      await updateProfile({
-        name: profileData?.name ?? '',
-        height: profileData?.height ?? '',
-        weight: profileData?.weight ?? '',
-        dob: hydrateDob(profileData?.dob),
-        profileImage: profileData?.profileImage ?? null,
-        stylePreferences: [selectedStyleLabel],
-        colorPreferences: [selectedTone],
+      const styleName = stylesList.find((s) => s.id === selectedStyle)?.name || 'Casual';
+      await userService.saveOnboardingSkinToneStyle({
+        skinTone: selectedTone,
+        stylePreferences: [styleName],
       });
       await completeOnboarding();
+
+      notify({ type: 'success', message: 'Welcome to Style On Spot!' });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (error) {
       console.error('Error completing onboarding:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSkip = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      await updateProfile({
-        name: profileData?.name ?? '',
-        height: profileData?.height ?? '',
-        weight: profileData?.weight ?? '',
-        dob: hydrateDob(profileData?.dob),
-        profileImage: profileData?.profileImage ?? null,
-      });
-      await completeOnboarding();
-    } catch (error) {
-      console.error('Error skipping style preferences:', error);
-    } finally {
-      setIsSubmitting(false);
+      notify({ type: 'error', message: 'Failed to save preferences. Please try again.' });
     }
   };
 
@@ -122,7 +88,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         <View style={styles.headerSection}>
           <Text style={styles.title}>Skin tone & Style Preferences</Text>
           <Text style={styles.subtitle}>
-            Personalize color and style recommendations
+            Personalize color and style recomendations
           </Text>
         </View>
 
@@ -157,7 +123,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
         <View style={styles.styleSection}>
           <Text style={styles.sectionTitle}>Style preference:</Text>
           <FlatList
-            data={styleCards}
+            data={stylesList}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
@@ -166,16 +132,14 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
               <TouchableOpacity 
                 style={[
                   styles.styleCard,
-                  selectedStyleId === item.id && styles.styleCardSelected
+                  selectedStyle === item.id && styles.styleCardSelected
                 ]}
-                onPress={() => setSelectedStyleId(item.id)}
+                onPress={() => setSelectedStyle(item.id)}
                 activeOpacity={0.9}
               >
-                <ImageBackground source={item.image} style={styles.styleImage} imageStyle={styles.styleImageMask}>
-                  <View style={styles.imageOverlay} />
-                </ImageBackground>
+                <Image source={item.image} style={styles.styleImage} />
                 <View style={styles.stylePill}>
-                  <Text style={styles.stylePillText}>{item.label}</Text>
+                  <Text style={styles.stylePillText}>{item.name}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -196,17 +160,15 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
               style={styles.continueButton}
               onPress={handleContinue}
               activeOpacity={0.9}
-              disabled={isSubmitting}
             >
-              {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.continueText}>Continue</Text>}
+              <Text style={styles.continueText}>Continue</Text>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity 
             style={styles.skipLink} 
             activeOpacity={0.7}
-            onPress={handleSkip}
-            disabled={isSubmitting}
+            onPress={handleContinue}
           >
             <Text style={styles.skipText}>Skip for now</Text>
           </TouchableOpacity>
@@ -219,7 +181,7 @@ export const StylePreferencesScreen: React.FC<StylePreferencesScreenProps> = ({ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -248,7 +210,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   title: {
-    ...typography.largeTitle,
+    fontFamily: fontNames.bold,
+    fontSize: 32,
+    fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
     marginBottom: 12,
@@ -256,8 +220,9 @@ const styles = StyleSheet.create({
     lineHeight: 38,
   },
   subtitle: {
-    ...typography.subheadline,
-    color: '#666666',
+    fontFamily: fontNames.regular,
+    fontSize: 15,
+    color: '#333333',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -265,7 +230,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   sectionTitle: {
-    ...typography.title3,
+    fontFamily: fontNames.bold,
+    fontSize: 18,
+    fontWeight: '700',
     color: '#000000',
     marginBottom: 16,
   },
@@ -277,7 +244,7 @@ const styles = StyleSheet.create({
   },
   toneSquare: {
     width: (width - 48 - 36) / 4,
-    height: ((width - 48 - 36) / 4) * 0.7,
+    height: (width - 48 - 36) / 4 * 0.7, // Rectangular logic
     borderRadius: 8,
   },
   toneSquareSelected: {
@@ -313,13 +280,11 @@ const styles = StyleSheet.create({
     paddingRight: 24,
   },
   styleCard: {
-    width: width * 0.58,
-    height: width * 0.82,
+    width: width * 0.65,
+    height: width * 0.85,
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#F2F2F7',
-    borderWidth: 1,
-    borderColor: '#F0F0F2',
   },
   styleCardSelected: {
     borderWidth: 3,
@@ -328,13 +293,7 @@ const styles = StyleSheet.create({
   styleImage: {
     width: '100%',
     height: '100%',
-  },
-  styleImageMask: {
     resizeMode: 'cover',
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.04)',
   },
   stylePill: {
     position: 'absolute',
@@ -350,7 +309,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   stylePillText: {
-    ...typography.subheadline,
+    fontFamily: fontNames.bold,
+    fontSize: 14,
+    fontWeight: '700',
     color: '#000000',
   },
   footer: {
@@ -381,7 +342,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
     height: 60,
-    borderRadius: 15,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',
@@ -391,7 +352,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   continueText: {
-    ...typography.headline,
+    fontFamily: fontNames.medium,
+    fontSize: 17,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
   skipLink: {
@@ -399,7 +362,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   skipText: {
-    ...typography.subheadline,
+    fontFamily: fontNames.regular,
+    fontSize: 14,
     color: '#666666',
   },
 });

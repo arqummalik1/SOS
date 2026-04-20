@@ -61,3 +61,6 @@ pids
 # Temporary folders
 tmp/
 temp/
+
+# Local Python venvs (e.g. PDF tooling); do not commit
+.venv-pdf/
