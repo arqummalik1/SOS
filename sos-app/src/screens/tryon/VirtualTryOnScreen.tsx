@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   Image,
   ImageSourcePropType,
@@ -44,7 +45,10 @@ type VirtualTryOnScreenProps = {
 
 const HERO_FALLBACK = require('../../../assets/VirtualTryOn/Frame 1000006731.png');
 
-const LOG = '[SOS_VIRTUAL_TRYON_UI]';
+const POLL_FAST_MS = 2500;
+const POLL_SLOW_MS = 5000;
+const POLL_FAST_WINDOW_MS = 30_000;
+const POLL_TIMEOUT_MS = 180_000;
 
 const defaultScheduleSlot = (): string => {
   const d = new Date();
@@ -78,6 +82,8 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  const [displayAspectRatio, setDisplayAspectRatio] = useState<number>(16 / 9);
+  const [generationProgress, setGenerationProgress] = useState<number>(0);
 
   const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
@@ -87,9 +93,16 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
   const [addedToCalendar, setAddedToCalendar] = useState(false);
 
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollStartedAtRef = useRef<number | null>(null);
+  const pollIntervalMsRef = useRef<number>(POLL_FAST_MS);
+  const pollRequestInFlightRef = useRef(false);
+  const timedOutRef = useRef(false);
+  const pollErrorNotifiedRef = useRef(false);
+  const pausedPollingTryOnIdRef = useRef<string | null>(null);
 
-  const contentWidth = Math.min(430, width - 24);
-  const heroHeight = Math.round(contentWidth * 1.53);
+  const contentWidth = width;
+  const heroHeight = Math.round(contentWidth * displayAspectRatio);
+  const estimatedFloatingTabOverlay = 72 + 24; // Matches CustomTabBar absolute visual footprint on Android
 
   const canStartTryOn = useMemo(() => {
     if (existingTryOnId && /^\d+$/.test(existingTryOnId)) return true;
@@ -111,63 +124,297 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
   /** Any non-terminal job state (pending, processing, or unknown in-flight labels from the API). */
   const inProgress = Boolean(tryOn?.id) && !isCompleted && !isFailed;
 
-  const displayImage = useMemo((): ImageSourcePropType => {
+  const displayImageMeta = useMemo((): { source: ImageSourcePropType; sourceKind: string } => {
     if (!tryOn) {
-      return selectedItemUri ? { uri: selectedItemUri } : HERO_FALLBACK;
+      return selectedItemUri
+        ? { source: { uri: selectedItemUri }, sourceKind: 'selectedItem' }
+        : { source: HERO_FALLBACK, sourceKind: 'fallback' };
     }
     const sl = statusLower(tryOn.status);
     if (sl === 'completed') {
+      // Per API docs: show processed image when ready (final background-removed), else show raw result
       const u =
-        tryOn.processedResultImageUrl || tryOn.resultImageUrl || tryOn.garmentImageUrl || selectedItemUri;
-      return u ? { uri: u } : HERO_FALLBACK;
+        tryOn.isProcessedResultReady && tryOn.processedResultImageUrl
+          ? tryOn.processedResultImageUrl // Final processed image (FULL MODEL)
+          : tryOn.resultImageUrl // Raw AI output (fast, shown first)
+            || tryOn.processedResultImageUrl // Fallback to processed if flag not set yet
+            || tryOn.garmentImageUrl
+            || selectedItemUri;
+      const sourceKind =
+        tryOn.isProcessedResultReady && tryOn.processedResultImageUrl
+          ? 'processedResult'
+          : tryOn.resultImageUrl
+            ? 'result'
+            : tryOn.processedResultImageUrl
+              ? 'processedResult'
+              : tryOn.garmentImageUrl
+                ? 'garment'
+                : selectedItemUri
+                  ? 'selectedItem'
+                  : 'fallback';
+      return u ? { source: { uri: u }, sourceKind } : { source: HERO_FALLBACK, sourceKind: 'fallback' };
     }
     if (sl === 'failed') {
       const u = tryOn.garmentImageUrl || tryOn.resultImageUrl || selectedItemUri;
-      return u ? { uri: u } : HERO_FALLBACK;
+      const sourceKind = tryOn.garmentImageUrl
+        ? 'garment'
+        : tryOn.resultImageUrl
+          ? 'result'
+          : selectedItemUri
+            ? 'selectedItem'
+            : 'fallback';
+      return u ? { source: { uri: u }, sourceKind } : { source: HERO_FALLBACK, sourceKind: 'fallback' };
     }
-    const u =
-      tryOn.garmentImageUrl || selectedItemUri || tryOn.modelImageUrl || tryOn.resultImageUrl || null;
-    return u ? { uri: u } : HERO_FALLBACK;
+    // During generation keep reference stable: model image only (or fallback).
+    const u = tryOn.modelImageUrl || null;
+    const sourceKind = tryOn.modelImageUrl
+      ? 'model'
+      : 'fallback';
+    return u ? { source: { uri: u }, sourceKind } : { source: HERO_FALLBACK, sourceKind: 'fallback' };
   }, [tryOn, selectedItemUri]);
 
-  const showModelGhost = Boolean(tryOn?.modelImageUrl && (inProgress || bootstrapLoading) && canStartTryOn);
+  const showModelGhost = Boolean(
+    tryOn?.modelImageUrl &&
+      (inProgress || bootstrapLoading) &&
+      canStartTryOn &&
+      displayImageMeta.sourceKind !== 'model'
+  );
 
   const showAiOverlay = !isFailed && ((tryOn && inProgress) || (bootstrapLoading && canStartTryOn));
+
+  const displayImageUri = useMemo(() => {
+    const s = displayImageMeta.source;
+    if (typeof s === 'object' && s && 'uri' in s && typeof (s as { uri?: unknown }).uri === 'string') {
+      return (s as { uri: string }).uri;
+    }
+    return null;
+  }, [displayImageMeta.source]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!displayImageUri) {
+      const asset = Image.resolveAssetSource(HERO_FALLBACK);
+      if (asset?.width && asset?.height && !cancelled) {
+        setDisplayAspectRatio((prev) => {
+          const next = asset.height / asset.width;
+          return Math.abs(prev - next) < 0.01 ? prev : next;
+        });
+      }
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    Image.getSize(
+      displayImageUri,
+      (w, h) => {
+        if (cancelled || !w || !h) return;
+        setDisplayAspectRatio((prev) => {
+          const next = h / w;
+          return Math.abs(prev - next) < 0.01 ? prev : next;
+        });
+      },
+      () => {}
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [displayImageUri]);
+
+  useEffect(() => {
+    if (!showAiOverlay) {
+      setGenerationProgress(0);
+      return;
+    }
+    const started = pollStartedAtRef.current ?? Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - started;
+      // UX target: reach ~95% by 15s, then wait for server completion.
+      const p = Math.min(0.95, elapsed / 15_000);
+      setGenerationProgress(p);
+    };
+    tick();
+    const t = setInterval(tick, 500);
+    return () => clearInterval(t);
+  }, [showAiOverlay]);
 
   const stopPolling = useCallback(() => {
     if (pollTimerRef.current) {
       clearInterval(pollTimerRef.current);
       pollTimerRef.current = null;
     }
+    pollRequestInFlightRef.current = false;
   }, []);
+
+  const setTryOnIfChanged = useCallback((next: VirtualTryOn) => {
+    setTryOn((prev) => {
+      if (!prev) return next;
+      const same =
+        prev.id === next.id &&
+        prev.status === next.status &&
+        prev.modelImageUrl === next.modelImageUrl &&
+        prev.garmentImageUrl === next.garmentImageUrl &&
+        prev.resultImageUrl === next.resultImageUrl &&
+        prev.processedResultImageUrl === next.processedResultImageUrl &&
+        prev.isProcessedResultReady === next.isProcessedResultReady &&
+        prev.errorMessage === next.errorMessage &&
+        prev.reaction === next.reaction &&
+        prev.rating === next.rating &&
+        prev.isSavedToLookbook === next.isSavedToLookbook &&
+        prev.scheduledFor === next.scheduledFor;
+      return same ? prev : next;
+    });
+  }, []);
+
+  const beginPollingInterval = useCallback(
+    (id: string, intervalMs: number) => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      pollIntervalMsRef.current = intervalMs;
+      pollTimerRef.current = setInterval(() => {
+        void (async () => {
+          if (pollRequestInFlightRef.current) return;
+          const startedAt = pollStartedAtRef.current ?? Date.now();
+          const elapsed = Date.now() - startedAt;
+
+          if (elapsed >= POLL_TIMEOUT_MS) {
+            stopPolling();
+            timedOutRef.current = true;
+            setStatusLine('Try-on is taking longer than expected. Pull down to retry.');
+            if (!pollErrorNotifiedRef.current) {
+              pollErrorNotifiedRef.current = true;
+              notify({
+                type: 'error',
+                message: 'Try-on timed out. Please pull down to refresh or retry.',
+              });
+            }
+            return;
+          }
+
+          pollRequestInFlightRef.current = true;
+          try {
+            const next = await getVirtualTryOn(id);
+
+            setTryOnIfChanged(next);
+            timedOutRef.current = false;
+            pollErrorNotifiedRef.current = false;
+            const sl = statusLower(next.status);
+
+            if (sl === 'failed') {
+              stopPolling();
+              const failureMessage = next.errorMessage?.trim() || 'Virtual try-on failed. Please try again.';
+              setStatusLine(failureMessage);
+              notify({ type: 'error', message: failureMessage });
+              return;
+            }
+
+            if (sl === 'completed' && next.resultImageUrl) {
+              // Keep showing raw output immediately, then upgrade when processed becomes ready.
+              setStatusLine(next.isProcessedResultReady ? 'Here is your try-on.' : 'Final touch-up in progress…');
+            } else if (sl === 'pending' || sl === 'processing') {
+              setStatusLine('AI is generating your look…');
+            }
+
+            if (sl === 'completed' && next.isProcessedResultReady && next.processedResultImageUrl) {
+              stopPolling();
+              setStatusLine('Here is your try-on.');
+              return;
+            }
+          } catch (e) {
+            console.warn('[API - ERROR] Polling error:', e);
+            if (!pollErrorNotifiedRef.current) {
+              pollErrorNotifiedRef.current = true;
+              notify({
+                type: 'error',
+                message: safeApiMessage(e, 'Could not update try-on status. Retrying...'),
+              });
+            }
+          } finally {
+            pollRequestInFlightRef.current = false;
+          }
+        })();
+      }, intervalMs);
+    },
+    [setTryOnIfChanged, stopPolling]
+  );
 
   const startPolling = useCallback(
     (id: string) => {
       stopPolling();
-      pollTimerRef.current = setInterval(() => {
-        void (async () => {
-          try {
-            const next = await getVirtualTryOn(id);
-            setTryOn(next);
-            const sl = statusLower(next.status);
-            if (sl === 'completed' || sl === 'failed') {
-              stopPolling();
-              setStatusLine(sl === 'failed' ? 'Could not finish this try-on.' : 'Here is your try-on.');
-            } else {
-              setStatusLine('AI is generating your look…');
-            }
-          } catch (e) {
-            console.warn(`${LOG} poll`, e);
+      pollStartedAtRef.current = Date.now();
+      pollErrorNotifiedRef.current = false;
+      timedOutRef.current = false;
+      // Fire one immediate poll to reduce first-result latency.
+      pollRequestInFlightRef.current = true;
+      void getVirtualTryOn(id)
+        .then((next) => {
+          setTryOnIfChanged(next);
+          const sl = statusLower(next.status);
+          if (sl === 'failed') {
+            stopPolling();
+            const failureMessage = next.errorMessage?.trim() || 'Virtual try-on failed. Please try again.';
+            setStatusLine(failureMessage);
+            notify({ type: 'error', message: failureMessage });
+            return;
           }
-        })();
-      }, 2200);
+          if (sl === 'completed' && next.resultImageUrl) {
+            setStatusLine(next.isProcessedResultReady ? 'Here is your try-on.' : 'Final touch-up in progress…');
+          } else {
+            setStatusLine('AI is generating your look…');
+          }
+          if (sl === 'completed' && next.isProcessedResultReady && next.processedResultImageUrl) {
+            stopPolling();
+            return;
+          }
+          beginPollingInterval(id, POLL_FAST_MS);
+        })
+        .catch((e) => {
+          console.warn('[SOS_VIRTUAL_TRYON] Poll bootstrap error:', e);
+          beginPollingInterval(id, POLL_FAST_MS);
+        })
+        .finally(() => {
+          pollRequestInFlightRef.current = false;
+        });
     },
-    [stopPolling]
+    [beginPollingInterval, setTryOnIfChanged, stopPolling]
   );
+
+  useEffect(() => {
+    if (!pollTimerRef.current || !pollStartedAtRef.current) return;
+    const elapsed = Date.now() - pollStartedAtRef.current;
+    if (elapsed >= POLL_FAST_WINDOW_MS && pollIntervalMsRef.current !== POLL_SLOW_MS && tryOn?.id) {
+      beginPollingInterval(tryOn.id, POLL_SLOW_MS);
+    }
+  }, [tryOn?.status, tryOn?.id, beginPollingInterval]);
 
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') {
+        if (pollTimerRef.current && tryOn?.id) {
+          pausedPollingTryOnIdRef.current = tryOn.id;
+          stopPolling();
+        }
+        return;
+      }
+
+      const resumeId = pausedPollingTryOnIdRef.current;
+      const status = statusLower(tryOn?.status);
+      const shouldResume =
+        Boolean(resumeId) &&
+        status !== 'failed' &&
+        !(status === 'completed' && tryOn?.isProcessedResultReady && tryOn?.processedResultImageUrl) &&
+        !timedOutRef.current;
+      if (shouldResume && resumeId) {
+        startPolling(resumeId);
+      }
+      pausedPollingTryOnIdRef.current = null;
+    });
+
+    return () => subscription.remove();
+  }, [startPolling, stopPolling, tryOn?.id, tryOn?.status, tryOn?.isProcessedResultReady, tryOn?.processedResultImageUrl]);
 
   useEffect(() => {
     if (tryOn?.reaction === 'liked') {
@@ -194,10 +441,19 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
       try {
         if (existingTryOnId && /^\d+$/.test(existingTryOnId)) {
           const row = await getVirtualTryOn(existingTryOnId);
+
           if (cancelled) return;
-          setTryOn(row);
-          setStatusLine(isCompletedLike(row.status) ? 'Here is your try-on.' : 'AI is generating your look…');
-          if (!isCompletedLike(row.status) && !isFailedLike(row.status)) {
+          setTryOnIfChanged(row);
+          setStatusLine(
+            isFailedLike(row.status)
+              ? (row.errorMessage?.trim() || 'Try-on failed.')
+              : isCompletedLike(row.status) && row.isProcessedResultReady
+                ? 'Here is your try-on.'
+                : isCompletedLike(row.status) && row.resultImageUrl
+                  ? 'Final touch-up in progress…'
+                  : 'AI is generating your look…'
+          );
+          if (!isFailedLike(row.status) && !(isCompletedLike(row.status) && row.isProcessedResultReady && row.processedResultImageUrl)) {
             startPolling(row.id);
           }
           return;
@@ -206,13 +462,15 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
         const wid = parseNumericId(wardrobeItemIdParam ?? null);
         if (wid != null) {
           const cat = mapLabelToTryOnCategory(params?.selectedItem?.details?.category);
+
           const row = await initiateVirtualTryOn({
             wardrobe_item_id: wid,
             category: cat,
             mode: 'balanced',
           });
+
           if (cancelled) return;
-          setTryOn(row);
+          setTryOnIfChanged(row);
           setStatusLine('AI is generating your look…');
           startPolling(row.id);
           return;
@@ -221,13 +479,15 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
         const oid = parseNumericId(outfitIdParam != null ? String(outfitIdParam) : null);
         if (oid != null) {
           const cat = mapLabelToTryOnCategory(params?.outfit?.category);
+
           const row = await initiateVirtualTryOn({
             outfit_id: oid,
             category: cat,
             mode: 'balanced',
           });
+
           if (cancelled) return;
-          setTryOn(row);
+          setTryOnIfChanged(row);
           setStatusLine('AI is generating your look…');
           startPolling(row.id);
           return;
@@ -237,7 +497,7 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
         setStatusLine('Open Virtual Try-On from an item in your wardrobe.');
       } catch (e) {
         if (cancelled) return;
-        console.warn(`${LOG} bootstrap`, e);
+        console.warn('[SOS_VIRTUAL_TRYON] bootstrap', e);
         notify({
           type: 'error',
           message: safeApiMessage(e, 'Could not start virtual try-on. Check your connection and try again.'),
@@ -260,9 +520,10 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
     outfitIdParam,
     params?.outfit?.category,
     params?.selectedItem?.details?.category,
+    wardrobeItemIdParam,
     startPolling,
     stopPolling,
-    wardrobeItemIdParam,
+    setTryOnIfChanged,
   ]);
 
   const onRefresh = useCallback(async () => {
@@ -270,7 +531,7 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
     setRefreshing(true);
     try {
       const row = await getVirtualTryOn(tryOn.id);
-      setTryOn(row);
+      setTryOnIfChanged(row);
       const sl = statusLower(row.status);
       setStatusLine(sl === 'completed' ? 'Here is your try-on.' : sl === 'failed' ? 'Could not finish.' : 'AI is generating…');
     } catch (e) {
@@ -278,7 +539,7 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
     } finally {
       setRefreshing(false);
     }
-  }, [tryOn?.id]);
+  }, [setTryOnIfChanged, tryOn?.id]);
 
   const requireTryOn = (): VirtualTryOn | null => {
     if (!tryOn?.id) {
@@ -360,10 +621,12 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
       if (!row) return;
       try {
         setShuffleOn(true);
+        console.log('[API - REGENERATE] POST /virtual-try-on/:id/regenerate - Regenerating try-on ID:', row.id);
         const updated = await regenerateVirtualTryOn(row.id, {
           category: mapLabelToTryOnCategory(row.category),
           mode: (row.mode as 'balanced' | 'quality') || 'balanced',
         });
+        console.log('[API - REGENERATE] Regeneration started - New ID:', updated.id, '- Status:', updated.status);
         setTryOn(updated);
         startPolling(updated.id);
         setStatusLine('AI is generating your look…');
@@ -453,7 +716,6 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingHorizontal: Math.max(12, (width - contentWidth) / 2),
             paddingBottom: tabBarHeight + 72,
           },
         ]}
@@ -474,6 +736,11 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
           <Text style={styles.subHeading} numberOfLines={2}>
             {statusLine}
           </Text>
+          {showAiOverlay ? (
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${Math.round(generationProgress * 100)}%` }]} />
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity
@@ -482,9 +749,17 @@ export const VirtualTryOnScreen: React.FC<VirtualTryOnScreenProps> = ({ navigati
           delayLongPress={600}
           style={[styles.heroWrap, { width: contentWidth, height: heroHeight }]}
         >
-          <Image source={displayImage} style={styles.heroImage} resizeMode="cover" />
+          <Image
+            source={displayImageMeta.source}
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
           {showModelGhost && tryOn?.modelImageUrl ? (
-            <Image source={{ uri: tryOn.modelImageUrl }} style={styles.modelGhost} resizeMode="cover" />
+            <Image
+              source={{ uri: tryOn.modelImageUrl }}
+              style={styles.modelGhost}
+              resizeMode="contain"
+            />
           ) : null}
           {isFailed ? (
             <View style={styles.failedOverlay}>
@@ -575,7 +850,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 16,
+    paddingTop: 8,
+    paddingBottom: 80,
   },
   backRow: {
     marginTop: 4,
@@ -591,7 +867,8 @@ const styles = StyleSheet.create({
   },
   headerWrap: {
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 8,
+    paddingHorizontal: 12,
   },
   heading: {
     ...typography.title1,
@@ -604,6 +881,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 12,
   },
+  progressTrack: {
+    marginTop: 10,
+    width: '84%',
+    height: 6,
+    backgroundColor: '#E3D8E8',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#A580A6',
+    borderRadius: 999,
+  },
   hintLongPress: {
     ...typography.caption1,
     color: '#8A8A8A',
@@ -611,10 +901,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   heroWrap: {
-    marginTop: 16,
+    marginTop: 12,
     alignSelf: 'center',
-    borderRadius: 24,
+    borderRadius: 0,
     overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
   },
   heroImage: {
     width: '100%',

@@ -1,17 +1,36 @@
-import { Image } from 'react-native';
+import { Image, Platform } from 'react-native';
 import { manipulateAsync, SaveFormat, type Action } from 'expo-image-manipulator';
 
-/** Portrait full-body frame (width : height). */
-const ASPECT_W = 9;
-const ASPECT_H = 16;
-
-/** After 9:16 crop, cap longer side to keep uploads under reverse-proxy limits. */
-const MAX_LONG_EDGE = 1280;
-const JPEG_QUALITY = 0.78;
+// #region agent log
+const agentIngestFullBodyPrepare = (
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>,
+  runId = 'pre-fix'
+) => {
+  fetch('http://127.0.0.1:7307/ingest/b5866ded-1c1e-4e33-85c9-06d109e465f6', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '6ccc31' },
+    body: JSON.stringify({
+      sessionId: '6ccc31',
+      runId,
+      hypothesisId,
+      location,
+      message,
+      data,
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+};
+// #endregion
 
 const log = (message: string, meta?: Record<string, unknown>) => {
   console.log(`[SOS_FULL_BODY_IMAGE] prepare: ${message}`, meta ?? '');
 };
+
+const MAX_LONG_EDGE = 1600;
+const JPEG_QUALITY = 0.82;
 
 const getDimensions = (uri: string): Promise<{ width: number; height: number } | null> =>
   new Promise((resolve) => {
@@ -23,8 +42,8 @@ const getDimensions = (uri: string): Promise<{ width: number; height: number } |
   });
 
 /**
- * Center-crop to **9:16** (portrait), then scale so the longer side is at most {@link MAX_LONG_EDGE},
- * and encode as JPEG. Used before `POST /onboarding/full-body-image` (`full_body_image` field).
+ * Non-cropping optimization for full-body upload.
+ * Preserves full frame while reducing payload size to avoid server limits/timeouts.
  */
 export const prepareFullBodyImageForUpload = async (
   sourceUri: string
@@ -34,60 +53,39 @@ export const prepareFullBodyImageForUpload = async (
 
   if (dims) {
     const { width: w, height: h } = dims;
-    const targetRatio = ASPECT_W / ASPECT_H;
-    const srcRatio = w / h;
-
-    let cropW: number;
-    let cropH: number;
-    let originX: number;
-    let originY: number;
-
-    if (srcRatio > targetRatio) {
-      cropH = h;
-      cropW = Math.floor((h * ASPECT_W) / ASPECT_H);
-      originX = Math.floor((w - cropW) / 2);
-      originY = 0;
-    } else {
-      cropW = w;
-      cropH = Math.floor((w * ASPECT_H) / ASPECT_W);
-      originX = 0;
-      originY = Math.floor((h - cropH) / 2);
-    }
-
-    cropW = Math.max(1, cropW);
-    cropH = Math.max(1, cropH);
-    originX = Math.max(0, Math.min(originX, w - cropW));
-    originY = Math.max(0, Math.min(originY, h - cropH));
-
-    actions.push({
-      crop: {
-        originX,
-        originY,
-        width: cropW,
-        height: cropH,
-      },
-    });
-
-    const longEdge = Math.max(cropW, cropH);
+    const longEdge = Math.max(w, h);
     if (longEdge > MAX_LONG_EDGE) {
-      if (cropW >= cropH) {
+      if (w >= h) {
         actions.push({ resize: { width: MAX_LONG_EDGE } });
       } else {
         actions.push({ resize: { height: MAX_LONG_EDGE } });
       }
     }
 
-    log('pipeline', {
+    log('optimize', {
       sourceW: w,
       sourceH: h,
-      crop: { originX, originY, width: cropW, height: cropH },
+      aspectRatio: (h / w).toFixed(2),
+      resized: longEdge > MAX_LONG_EDGE,
+      note: 'NO CROPPING + ASPECT RATIO PRESERVED',
+    });
+    // #region agent log
+    agentIngestFullBodyPrepare('H-C', 'prepareFullBodyImageForUpload.ts:optimize', 'source optimized with resolved dimensions', {
+      platform: Platform.OS,
+      sourceW: w,
+      sourceH: h,
+      aspectHW: h / w,
       resized: longEdge > MAX_LONG_EDGE,
     });
+    // #endregion
   } else {
-    actions.push({ resize: { height: MAX_LONG_EDGE } });
-    log('dimensions unknown — resize-only fallback (could not read size for 9:16 crop)', {
-      height: MAX_LONG_EDGE,
+    log('optimize (dimensions unknown)', { note: 'NO CROPPING + FALLBACK JPEG ENCODE' });
+    // #region agent log
+    agentIngestFullBodyPrepare('H-C', 'prepareFullBodyImageForUpload.ts:optimize', 'source optimized with unknown dimensions', {
+      platform: Platform.OS,
+      fallback: 'encode-only',
     });
+    // #endregion
   }
 
   const result = await manipulateAsync(sourceUri, actions, {
@@ -96,11 +94,23 @@ export const prepareFullBodyImageForUpload = async (
   });
 
   log('encoded', {
-    width: result.width,
-    height: result.height,
-    format: 'jpeg',
+    outW: result.width,
+    outH: result.height,
+    aspectRatio: result.width > 0 ? (result.height / result.width).toFixed(2) : 'N/A',
+    quality: JPEG_QUALITY,
+    resized: actions.length > 0,
+    note: 'NO CROPPING + JPEG optimize',
+  });
+  // #region agent log
+  agentIngestFullBodyPrepare('H-C', 'prepareFullBodyImageForUpload.ts:encoded', 'optimized output generated', {
+    platform: Platform.OS,
+    outW: result.width,
+    outH: result.height,
+    aspectHW: result.width > 0 ? result.height / result.width : null,
+    resized: actions.length > 0,
     quality: JPEG_QUALITY,
   });
+  // #endregion
 
   return {
     uri: result.uri,
